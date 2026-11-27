@@ -1210,6 +1210,23 @@ registerBankEntry({
   questions: []
 });
 
+// Built-in Bank 3: 国省考判断真题册（前三套：2021–2023国考真题）
+registerBankEntry({
+  id: "zhenti304",
+  name: "国省考判断真题",
+  shortName: "判断真题",
+  subtitle: "小P公考2027版 · 2021–2023国考真题前三套（120题 · 含高清图推 & 一拖五）",
+  icon: "🎯",
+  chapterPrefix: "套",
+  chapterNames: { "1": "2021年国考副省级卷", "2": "2022年国考地市级卷", "3": "2023年国考地市级卷" },
+  count: 120,
+  builtin: true,
+  loaded: false,
+  scriptSrc: "banks/zhenti304.js",
+  jsonSrc: "banks/zhenti304.json",
+  questions: []
+});
+
 window.__REGISTER_BANK__ = function(bankObj) {
   if (!bankObj || !bankObj.id) return;
   const entry = registerBankEntry({
@@ -1219,6 +1236,7 @@ window.__REGISTER_BANK__ = function(bankObj) {
     subtitle: bankObj.subtitle || "",
     icon: bankObj.icon || "📚",
     chapterPrefix: bankObj.chapterPrefix || "套",
+    chapterNames: bankObj.chapterNames || null,
     builtin: true
   }, bankObj.questions || []);
   const res = pendingBankResolvers.get(bankObj.id);
@@ -1328,6 +1346,9 @@ function getActiveQuestions() {
   return (b && b.questions) ? b.questions : [];
 }
 function getChapterLabel(bank, ch) {
+  if (bank && bank.chapterNames && bank.chapterNames[String(ch)]) {
+    return bank.chapterNames[String(ch)];
+  }
   const prefix = (bank && bank.chapterPrefix) || "练习题";
   const cn = CN_NUMS[ch] || String(ch);
   if (prefix === "篇") return `第${cn}篇`;
@@ -1608,9 +1629,9 @@ function renderDashboard() {
     let tagHtml = "";
     if (bank.id === "yanyu600" && ch === 15) {
       tagHtml = `<span class="q-type-tag" style="font-size:11px;padding:1px 6px;">篇章阅读</span>`;
-    } else if (bank.id === "panduan600" && hasPassage) {
+    } else if ((bank.id === "panduan600" || bank.id === "zhenti304") && hasPassage) {
       tagHtml = `<span class="q-type-tag" style="font-size:11px;padding:1px 6px;">含一拖五</span>`;
-    } else if (hasImgs && bank.id !== "panduan600") {
+    } else if (hasImgs && bank.id !== "panduan600" && bank.id !== "zhenti304") {
       tagHtml = `<span class="q-type-tag" style="font-size:11px;padding:1px 6px;">含图</span>`;
     }
     const btnLabel = done === 0 ? (histCnt > 0 ? `开始第${histCnt + 1}刷` : "开始刷题") : (done < qs.length ? "继续刷题" : "复盘");
@@ -1770,7 +1791,7 @@ function renderFullFeed() {
       const pStage = document.createElement("div");
       pStage.className = "passage-stage";
       pStage.dataset.drawKey = q.passageId;
-      const pKindLabel = q.bankId === "yanyu600" ? "📖 篇章阅读材料" : (q.bankId === "panduan600" ? "🧩 综合推理材料（一拖五）" : "📄 共用材料");
+      const pKindLabel = q.bankId === "yanyu600" ? "📖 篇章阅读材料" : ((q.bankId === "panduan600" || q.bankId === "zhenti304") ? "🧩 综合推理材料（一拖五）" : "📄 共用材料");
       pStage.innerHTML = `
         <canvas class="draw-canvas-hl"></canvas>
         <canvas class="draw-canvas-pen"></canvas>
