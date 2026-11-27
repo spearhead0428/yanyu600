@@ -2862,11 +2862,29 @@ function applyImportedState(obj, sourceLabel = "导入") {
   showToast(`✓ ${sourceLabel}成功！已同步作答、计时、历史轮次、笔记与涂改`);
 }
 
-async function pushToGitHubGist(silent = false) {
+function cleanToken(t) {
+  return String(t || "").replace(/[\s"'`“”]/g, "").trim();
+}
+function validateSyncInputs(silent = false) {
+  syncCfg.token = cleanToken(syncCfg.token);
+  syncCfg.gistId = cleanToken(syncCfg.gistId);
   if (!syncCfg.token) {
-    if (!silent) showToast("请先填写 GitHub Token");
+    if (!silent) showToast("请先填写 GitHub Classic Token（ghp_ 开头）");
     return false;
   }
+  if (syncCfg.gistId.startsWith("ghp_") || syncCfg.gistId.startsWith("gho_")) {
+    if (!silent) showToast("⚠️ 检测到你把 Token 填进 Gist ID 框了，请把两个输入框对调！");
+    return false;
+  }
+  if (syncCfg.token.startsWith("github_pat_")) {
+    if (!silent) showToast("⚠️ 这是 Fine-grained Token，GitHub Gist 接口仅支持 Classic Token（ghp_ 开头）！");
+    return false;
+  }
+  return true;
+}
+
+async function pushToGitHubGist(silent = false) {
+  if (!validateSyncInputs(silent)) return false;
   try {
     const payload = {
       description: "粉笔风格刷题同步数据 - 言语理解与表达600题",
@@ -2888,7 +2906,13 @@ async function pushToGitHubGist(silent = false) {
       },
       body: JSON.stringify(payload)
     });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    if (!resp.ok) {
+      let detail = "";
+      try { const errJson = await resp.json(); detail = errJson.message || ""; } catch (e) {}
+      if (resp.status === 401) throw new Error("HTTP 401（Token 无效、已过期，或填成了密码/Fine-grained Token，请重新生成 ghp_ 开头的 Classic Token）");
+      if (resp.status === 404) throw new Error("HTTP 404（Gist ID 不存在或不属于当前 Token 账号；可清空 Gist ID 框重新上传自动新建）");
+      throw new Error(`HTTP ${resp.status}${detail ? " " + detail : ""}`);
+    }
     const data = await resp.json();
     if (!syncCfg.gistId && data.id) syncCfg.gistId = data.id;
     syncCfg.lastSyncAt = Date.now();
@@ -2896,14 +2920,15 @@ async function pushToGitHubGist(silent = false) {
     if (!silent) showToast("☁️ 已成功上传同步到 GitHub Gist 云端！");
     return true;
   } catch (err) {
-    if (!silent) showToast(`云端上传失败：${err.message}（请检查网络或 Token 是否有 gist 权限）`);
+    if (!silent) showToast(`云端上传失败：${err.message}`);
     return false;
   }
 }
 
 async function pullFromGitHubGist(silent = false, onlyIfNewer = false) {
-  if (!syncCfg.token || !syncCfg.gistId) {
-    if (!silent) showToast("请先填写 GitHub Token 与 Gist ID");
+  if (!validateSyncInputs(silent)) return false;
+  if (!syncCfg.gistId) {
+    if (!silent) showToast("请先填写 Gist ID（或先点一次上传自动生成）");
     return false;
   }
   try {
@@ -2914,7 +2939,11 @@ async function pullFromGitHubGist(silent = false, onlyIfNewer = false) {
       },
       cache: "no-store"
     });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    if (!resp.ok) {
+      if (resp.status === 401) throw new Error("HTTP 401（Token 无效、已过期，或不是 ghp_ 开头的 Classic Token）");
+      if (resp.status === 404) throw new Error("HTTP 404（Gist ID 不存在或 Token 缺少 gist 权限）");
+      throw new Error(`HTTP ${resp.status}`);
+    }
     const data = await resp.json();
     const file = data.files && data.files["fenbi_yanyu600_state.json"];
     if (!file) throw new Error("未在 Gist 中找到同步文件");
@@ -3000,8 +3029,9 @@ function openSyncCenterModal() {
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <b style="font-size:14.5px;">☁️ 方式一：GitHub Gist 免费自动云同步（推荐 · 电脑/手机/iPad 全通用）</b>
         </div>
-        <div style="font-size:12px;color:var(--text-3);margin-bottom:10px;">
-          在 GitHub → Settings → Developer settings → Personal access tokens (classic) 生成一个仅勾选 <code>gist</code> 权限的 Token，首次上传会自动生成私有 Gist ID；在另一台设备填入相同 Token + Gist ID 即可互通。
+        <div style="font-size:12px;color:var(--text-3);margin-bottom:10px;line-height:1.6;">
+          请使用 <b>Classic Token（<code>ghp_</code> 开头，仅勾选 <code>gist</code> 权限，Expiration 建议选 <code>No expiration</code> 长期不失效）</b>：
+          <a href="https://github.com/settings/tokens/new?scopes=gist&description=fenbi-sync" target="_blank" rel="noopener" style="color:var(--primary);font-weight:600;text-decoration:underline;">🔑 点此一键直达生成页面 ↗</a>
         </div>
         <div class="sync-input-grid">
           <input type="password" id="inpGistToken" placeholder="GitHub Token (ghp_...)" value="${escapeHtml(syncCfg.token || "")}"
