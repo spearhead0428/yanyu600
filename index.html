@@ -802,6 +802,39 @@ html[data-theme="dark"] .opt-fig-img {
   box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.08);
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
 }
+/* Mobile/Touch right-edge native scroll lane during drawing mode */
+.card-scroll-strip {
+  display: none;
+  position: absolute; top: 0; right: 0; bottom: 0; width: 32px;
+  z-index: 15;
+  touch-action: pan-y;
+}
+.mobile-scroll-rail {
+  display: none;
+  position: fixed; right: 0; top: 54px; bottom: 108px; width: 28px;
+  z-index: 65; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(37, 119, 255, 0.09));
+  border-left: 1.5px dashed rgba(37, 119, 255, 0.30);
+  align-items: center; justify-content: center;
+}
+.mobile-scroll-rail .rail-grip {
+  font-size: 10px; line-height: 1.3; font-weight: 700;
+  color: var(--primary); opacity: 0.78;
+  text-align: center;
+  background: var(--surface); border: 1px solid var(--primary-border);
+  border-radius: 8px 0 0 8px; padding: 5px 2px;
+  box-shadow: var(--shadow-sm);
+}
+@media (max-width: 1040px), (hover: none) and (pointer: coarse) {
+  body.in-quiz.tool-drawing .card-scroll-strip,
+  body.in-quiz.tool-eraser .card-scroll-strip {
+    display: block;
+  }
+  body.in-quiz.tool-drawing .mobile-scroll-rail,
+  body.in-quiz.tool-eraser .mobile-scroll-rail {
+    display: flex;
+  }
+}
 .mobile-sub-palette {
   display: none;
   align-items: center; justify-content: space-between; gap: 8px;
@@ -1053,6 +1086,11 @@ html[data-theme="dark"] .opt-fig-img {
     </div>
   </aside>
 </main>
+
+<!-- MOBILE RIGHT-EDGE SCROLL HINT (VISIBLE IN DRAW MODE) -->
+<div class="mobile-scroll-rail" id="mobileScrollRail" aria-hidden="true">
+  <span class="rail-grip">↕<br>滑<br>动</span>
+</div>
 
 <!-- MOBILE FIXED BOTTOM THUMB BAR -->
 <nav class="mobile-bottom-bar" id="mobileBottomBar">
@@ -1822,6 +1860,7 @@ function renderFullFeed() {
       pStage.innerHTML = `
         <canvas class="draw-canvas-hl"></canvas>
         <canvas class="draw-canvas-pen"></canvas>
+        <div class="card-scroll-strip" aria-hidden="true"></div>
         <div class="passage-inner">
           <div class="passage-head">
             <div class="passage-title">${pKindLabel}（第 ${firstNo}–${lastNo} 题共用${q.source ? " · " + escapeHtml(q.source) : ""}）</div>
@@ -1922,6 +1961,7 @@ function buildQuestionCardHtml(q, idx) {
     <div class="question-stage" data-draw-key="${escapeHtml(q.id)}">
       <canvas class="draw-canvas-hl"></canvas>
       <canvas class="draw-canvas-pen"></canvas>
+      <div class="card-scroll-strip" aria-hidden="true"></div>
       <div class="question-card-inner">
         <div class="q-header">
           <div class="q-badges">
@@ -2419,10 +2459,10 @@ function setDrawTool(tool, notify = false) {
     const isMob = window.matchMedia("(max-width: 720px)").matches;
     const names = isMob ? {
       cursor: "已切回：答题滚动模式",
-      highlighter: "荧光笔已开启（轻点 A/B/C/D 圆圈可直接选答案）",
-      pen: "画笔已开启（轻点 A/B/C/D 圆圈可直接选答案）",
-      line: "直线工具已开启（拖动即画下划线）",
-      eraser: "橡皮擦已开启（划过涂鸦即擦除）"
+      highlighter: "荧光笔已开启（轻点选项圆圈作答 · 最右侧边缘可直接上下滑动）",
+      pen: "画笔已开启（轻点选项圆圈作答 · 最右侧边缘可直接上下滑动）",
+      line: "直线已开启（最右侧边缘可直接上下滑动）",
+      eraser: "橡皮擦已开启（最右侧边缘可直接上下滑动）"
     } : {
       cursor: "已切回：答题点击模式",
       highlighter: "荧光笔已开启（右键/中键可直接选选项，再按 H 关闭）",
