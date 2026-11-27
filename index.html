@@ -1158,6 +1158,7 @@ function normalizeBankQuestions(bankId, rawQs) {
       answer: String(q.answer || "A").trim().toUpperCase().slice(0, 1)
     };
     if (q.passage) { out.passage = String(q.passage); out.passageId = passageId || `${bankId}__p_${ch}_${num}`; }
+    if (Array.isArray(q.passageImages) && q.passageImages.length) out.passageImages = q.passageImages;
     if (Array.isArray(q.stemImages) && q.stemImages.length) out.stemImages = q.stemImages;
     if (q.optionImages && typeof q.optionImages === "object" && Object.keys(q.optionImages).length) out.optionImages = q.optionImages;
     if (q.analysis) out.analysis = String(q.analysis);
@@ -1210,23 +1211,25 @@ registerBankEntry({
   questions: []
 });
 
-// Built-in Bank 3: 国省考判断真题册（持续更新：当前已含 2021–2026 完整6年国考真题）
+// Built-in Bank 3: 国省考判断真题册（全本26套：2021–2026国考 + 国考差异 + 江苏A/BC + 浙江A，共1075题）
 registerBankEntry({
   id: "zhenti304",
   name: "国省考判断真题",
   shortName: "判断真题",
-  subtitle: "小P公考2027版 · 2021–2026国考真题完整6套（230题 · 含高清图推 & 一拖五）",
+  subtitle: "小P公考2027版 · 全本26套（国考+江苏+浙江 1075题 · 含高清图推 & 综合材料）",
   icon: "🎯",
   chapterPrefix: "套",
   chapterNames: {
-    "1": "2021年国考副省级卷",
-    "2": "2022年国考地市级卷",
-    "3": "2023年国考地市级卷",
-    "4": "2024年国考地市级卷",
-    "5": "2025年国考副省级卷",
-    "6": "2026年国考副省级卷"
+    "1": "2021年国考副省级卷", "2": "2022年国考地市级卷", "3": "2023年国考地市级卷",
+    "4": "2024年国考地市级卷", "5": "2025年国考副省级卷", "6": "2026年国考副省级卷",
+    "7": "国考差异题·类比推理", "8": "国考差异题·图形推理", "9": "国考差异题·逻辑判断", "10": "国考差异题·定义判断",
+    "11": "2021年江苏A卷", "12": "2022年江苏A卷", "13": "2023年江苏A卷",
+    "14": "2024年江苏A卷", "15": "2025年江苏A卷", "16": "2026年江苏A卷",
+    "17": "江苏BC差异·类比推理", "18": "江苏BC差异·图形推理", "19": "江苏BC差异·逻辑判断", "20": "江苏BC差异·定义判断",
+    "21": "2021年浙江A卷", "22": "2022年浙江A卷", "23": "2023年浙江A卷",
+    "24": "2024年浙江A卷", "25": "2025年浙江A卷", "26": "2026年浙江A卷"
   },
-  count: 230,
+  count: 1075,
   builtin: true,
   loaded: false,
   scriptSrc: "banks/zhenti304.js",
@@ -1798,7 +1801,10 @@ function renderFullFeed() {
       const pStage = document.createElement("div");
       pStage.className = "passage-stage";
       pStage.dataset.drawKey = q.passageId;
-      const pKindLabel = q.bankId === "yanyu600" ? "📖 篇章阅读材料" : ((q.bankId === "panduan600" || q.bankId === "zhenti304") ? "🧩 综合推理材料（一拖五）" : "📄 共用材料");
+      const pKindLabel = q.bankId === "yanyu600" ? "📖 篇章阅读材料" : ((q.bankId === "panduan600" || q.bankId === "zhenti304") ? `🧩 综合推理材料（${groupQs.length === 2 ? "一拖二" : groupQs.length === 5 ? "一拖五" : `一拖${groupQs.length}`}）` : "📄 共用材料");
+      const pImgsHtml = (q.passageImages && q.passageImages.length)
+        ? `<div class="q-fig-wrap">${q.passageImages.map((src, i) => `<img class="q-fig-img" src="${escapeHtml(src)}" alt="材料图示${i + 1}" loading="lazy" />`).join("")}</div>`
+        : "";
       pStage.innerHTML = `
         <canvas class="draw-canvas-hl"></canvas>
         <canvas class="draw-canvas-pen"></canvas>
@@ -1810,11 +1816,17 @@ function renderFullFeed() {
               <button class="btn btn-sm" data-toggle-passage="${escapeHtml(q.passageId)}">收起材料</button>
             </div>
           </div>
-          <div class="passage-body" id="pbody-${escapeHtml(q.passageId)}">${renderPassageHtml(q.passage)}</div>
+          <div class="passage-body" id="pbody-${escapeHtml(q.passageId)}">${renderPassageHtml(q.passage)}${pImgsHtml}</div>
         </div>
       `;
       feed.appendChild(pStage);
       bindCanvasStage(pStage, q.passageId, null);
+      pStage.querySelectorAll("img").forEach(img => {
+        img.addEventListener("load", () => {
+          resizeSingleCanvas(q.passageId);
+          redrawSingleCanvas(q.passageId);
+        });
+      });
     }
 
     const wrap = document.createElement("div");
