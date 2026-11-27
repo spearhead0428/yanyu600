@@ -2023,6 +2023,7 @@ function selectOptionForQuestion(qId, idx, letter) {
   saveState();
   refreshSingleQuestionCard(idx);
   renderAnswerSheet();
+  updateTimerDisplay();
 }
 
 function toggleEliminate(qId, idx, letter) {
@@ -2525,11 +2526,18 @@ function updateSheetActive() {
 
 // ================= TIMER =================
 let tabHiddenAt = 0;
+function isReviewingMode() {
+  if (state.mode === "study") return true;
+  if (deckSubmitted) return true;
+  if (currentDeck.length > 0 && currentDeck.every(q => Boolean(state.answers[q.id]))) return true;
+  return false;
+}
+
 function startTimer() {
   stopTimer();
   updateTimerDisplay();
   timerInterval = setInterval(() => {
-    if (!isQuizView || timerPaused || document.hidden) return;
+    if (!isQuizView || timerPaused || document.hidden || isReviewingMode()) return;
     const q = currentDeck[activeIdx];
     if (!q) return;
     sessionElapsedSec++;
@@ -2547,7 +2555,7 @@ document.addEventListener("visibilitychange", () => {
     $("timerBox")?.classList.add("paused");
   } else {
     updateTimerDisplay();
-    if (tabHiddenAt && !timerPaused && (Date.now() - tabHiddenAt) >= 3000) {
+    if (tabHiddenAt && !timerPaused && !isReviewingMode() && (Date.now() - tabHiddenAt) >= 3000) {
       showToast("⏱ 离开标签页期间已自动暂停计时，现已继续");
     }
     tabHiddenAt = 0;
@@ -2570,11 +2578,12 @@ function updateTimerDisplay() {
     if (at) at.textContent = fmtTime(qSec);
   }
 
+  const reviewing = isReviewingMode();
   const box = $("timerBox");
-  box.classList.toggle("paused", timerPaused);
+  box.classList.toggle("paused", timerPaused || reviewing);
   box.classList.remove("warn", "danger");
 
-  if (state.timerMode === "down") {
+  if (!reviewing && state.timerMode === "down") {
     const rem = state.countdownTargetSec - sessionElapsedSec;
     if (rem <= 0) {
       $("totalTimerDisp").textContent = "00:00";
@@ -2588,10 +2597,21 @@ function updateTimerDisplay() {
   } else {
     $("totalTimerDisp").textContent = fmtTime(sessionElapsedSec);
   }
-  $("btnTimerToggle").textContent = timerPaused ? "▶" : "⏸";
+  const toggleBtn = $("btnTimerToggle");
+  if (reviewing) {
+    toggleBtn.textContent = "✓";
+    toggleBtn.title = "复盘/已完卷：计时已自动锁定，不再累加耗时";
+  } else {
+    toggleBtn.textContent = timerPaused ? "▶" : "⏸";
+    toggleBtn.title = "暂停/继续计时";
+  }
 }
 
 function togglePause(forcePause = null) {
+  if (isReviewingMode() && forcePause === null) {
+    showToast("当前为复盘/已完卷状态，计时已自动锁定，不会增加耗时");
+    return;
+  }
   timerPaused = forcePause !== null ? forcePause : !timerPaused;
   $("pauseOverlay").classList.toggle("show", timerPaused);
   updateTimerDisplay();
@@ -2610,10 +2630,11 @@ function submitDeck() {
   deckSubmitted = true;
   if (isChapterDeckKey(currentDeckKey)) {
     state.chapterSubmitted[currentDeckKey] = true;
-    saveState();
+    saveState(true);
   }
   renderFullFeed();
   renderAnswerSheet();
+  updateTimerDisplay();
   showReportModal(currentDeck, currentDeckTitle);
 }
 
@@ -3034,6 +3055,7 @@ function autoCheckCloudOnLoad() {
     pullFromGitHubGist(true, true);
   }
 }
+window.addEventListener("hashchange", handlePairingHashOnLoad);
 
 function openSyncCenterModal() {
   const rawStr = localStorage.getItem(STORAGE_KEY) || "{}";
