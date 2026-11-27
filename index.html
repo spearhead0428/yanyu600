@@ -274,9 +274,17 @@ body.in-quiz .brand-sub { display: none; }
   #btnSheetMobile { display: none !important; }
 }
 @media (max-width: 1040px) {
+  .topbar { padding: 0 12px; gap: 8px; }
   .quiz-shell { grid-template-columns: 1fr; }
+  body.in-quiz .brand,
+  body.in-quiz .timer-sub,
+  body.in-quiz #modeTabs,
+  body.in-quiz #btnFontDec,
+  body.in-quiz #btnFontInc,
+  body.in-quiz #btnTheme { display: none !important; }
+  .mobile-sheet-settings { display: flex; }
   .sheet-sidebar {
-    position: fixed !important; right: -330px; top: 58px; bottom: 0; width: 310px;
+    position: fixed !important; right: -340px; top: 58px; bottom: 0; width: 310px;
     z-index: 80; border-radius: 0 !important; transition: right .22s ease;
     max-height: none !important;
   }
@@ -701,11 +709,107 @@ html[data-theme="dark"] .q-source-tag {
   display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 75;
 }
 .sheet-backdrop.show { display: block; }
+
+/* Mobile-only Settings Strip inside Drawer & Fixed Bottom Thumb Bar */
+.mobile-sheet-settings {
+  display: none;
+  flex-direction: column; gap: 10px;
+  padding-bottom: 12px; margin-bottom: 12px;
+  border-bottom: 1px dashed var(--border);
+}
+.mobile-sheet-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+}
+.mobile-bottom-bar {
+  display: none;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 70;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.08);
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+}
+.mobile-sub-palette {
+  display: none;
+  align-items: center; justify-content: space-between; gap: 8px;
+  padding: 6px 10px 8px; margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+.mobile-sub-palette.show { display: flex; }
+.mobile-bar-grid {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px;
+}
+.mob-tool-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  padding: 5px 2px; border-radius: 9px;
+  font-size: 11px; font-weight: 600; color: var(--text-2);
+  border: 1px solid transparent;
+  min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
+}
+.mob-tool-btn .ico { font-size: 16px; line-height: 1; }
+.mob-tool-btn.active { background: var(--primary-soft); color: var(--primary); border-color: var(--primary-border); }
+.mob-tool-btn.active-hl { background: #FFF6CC; color: #8A6500; border-color: #F2D263; }
+.mob-tool-btn.active-pen { background: var(--red-soft); color: var(--red); border-color: var(--red-border); }
+.mob-tool-btn.active-eraser { background: var(--orange-soft); color: var(--orange); border-color: var(--orange-border); }
+
+.sync-input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+
+@media (hover: none) {
+  .opt-elim-btn { opacity: 0.72; }
+}
+
 @media (max-width: 720px) {
-  .topbar { padding: 0 10px; height: 54px; }
-  .brand-sub, .hide-sm { display: none !important; }
-  .question-card-inner, .passage-inner { padding: 16px 15px 18px; }
-  .hero-card { padding: 18px; }
+  .topbar { padding: 0 10px; height: 52px; gap: 6px; }
+  .topbar-left, .topbar-center, .topbar-right { gap: 6px; }
+  .brand-sub, .hide-sm, .kbd { display: none !important; }
+  body.in-quiz .brand { display: none !important; }
+  body.in-quiz #btnToggleToolbarTop,
+  body.in-quiz #btnTheme,
+  body.in-quiz #btnSheetMobile { display: none !important; }
+  body.in-quiz .timer-sub { display: none !important; }
+  .timer-box { padding: 3px 8px; gap: 5px; }
+  .timer-main { font-size: 13.5px; }
+  .btn-back-txt { display: none; }
+  #navDeckTitle { font-size: 13.5px !important; max-width: 72px; overflow: hidden; text-overflow: ellipsis; }
+
+  .container { padding: 14px 12px 40px; }
+  .hero-card { padding: 18px 16px; gap: 14px; border-radius: 14px; }
+  .hero-title { font-size: 18px; }
+  .hero-desc { font-size: 12.5px; line-height: 1.5; }
+  .hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+  .stat-pill { min-width: 0; padding: 9px 12px; }
+  .stat-pill .val { font-size: 18px; }
+  .quick-bar { gap: 10px; }
+  .quick-actions { width: 100%; gap: 7px; }
+  .chip-btn { height: 35px; padding: 0 11px; font-size: 12.5px; }
+  .search-wrap { width: 100%; min-width: 0; }
+  .chapter-grid { grid-template-columns: 1fr; gap: 11px; }
+
+  .quiz-shell { padding: 10px 10px 110px; gap: 12px; }
+  .toolbar-sticky { display: none !important; }
+  body.in-quiz .mobile-bottom-bar { display: block; }
+  .mobile-sheet-settings { display: flex; }
+  .sheet-sidebar { top: 52px; width: 86vw; max-width: 330px; }
+
+  .question-feed { gap: 12px; }
+  .q-wrapper, .passage-stage { scroll-margin-top: 62px; }
+  .question-card-inner, .passage-inner { padding: 15px 14px 17px; }
+  .q-header { padding-bottom: 10px; margin-bottom: 12px; gap: 6px; }
+  .q-num-badge { font-size: 13px; padding: 2px 8px; }
+  .q-stem { line-height: 1.82; }
+  .option-item { padding: 11px 11px; gap: 10px; }
+  .opt-elim-btn { opacity: 0.72; padding: 3px 6px; font-size: 11.5px; }
+  .answer-panel { padding: 12px 14px; }
+
+  .modal-backdrop { padding: 10px; }
+  .modal-head { padding: 13px 15px; }
+  .modal-body { padding: 14px 15px; }
+  .modal-foot { padding: 11px 15px; flex-wrap: wrap; }
+  .sync-input-grid { grid-template-columns: 1fr; }
+  .report-hero { padding: 14px; gap: 14px; justify-content: center; }
+  .report-kpis { width: 100%; }
+  body.in-quiz .toast { bottom: 128px; max-width: 88vw; text-align: center; font-size: 12.5px; padding: 8px 14px; }
 }
 </style>
 </head>
@@ -719,7 +823,7 @@ html[data-theme="dark"] .q-source-tag {
       <span>言语600题</span>
       <span class="brand-sub">疯狂刷2500题 · 实战公考</span>
     </div>
-    <button class="btn btn-sm hidden" id="btnBackHome">← 返回目录</button>
+    <button class="btn btn-sm hidden" id="btnBackHome">←<span class="btn-back-txt"> 返回目录</span></button>
     <span id="navDeckTitle" class="hidden" style="font-weight:700;font-size:14.5px;"></span>
   </div>
 
@@ -832,6 +936,25 @@ html[data-theme="dark"] .q-source-tag {
       <span class="sheet-title">答题卡 <span id="sheetProg" style="color:var(--primary);font-size:13px;">0/40</span></span>
       <button class="btn btn-sm" id="btnViewReport">📊 报告</button>
     </div>
+    <div class="mobile-sheet-settings">
+      <div class="mobile-sheet-row">
+        <span style="font-size:12.5px;color:var(--text-2);font-weight:600;">模式</span>
+        <div class="seg-tabs" id="mobileModeTabs">
+          <button class="seg-tab active" data-mode="practice">刷题</button>
+          <button class="seg-tab" data-mode="exam">模考</button>
+          <button class="seg-tab" data-mode="study">背题</button>
+        </div>
+      </div>
+      <div class="mobile-sheet-row">
+        <span style="font-size:12.5px;color:var(--text-2);font-weight:600;">显示</span>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-sm" id="mobFontDec">A-</button>
+          <button class="btn btn-sm" id="mobFontInc">A+</button>
+          <button class="btn btn-sm" id="mobTheme">☀ 明亮</button>
+          <button class="btn btn-sm" id="mobToggleStrokes">👁 显隐</button>
+        </div>
+      </div>
+    </div>
     <div class="sheet-legend">
       <span class="leg-item"><span class="leg-dot"></span>未做</span>
       <span class="leg-item"><span class="leg-dot done"></span>已答</span>
@@ -847,6 +970,23 @@ html[data-theme="dark"] .q-source-tag {
     </div>
   </aside>
 </main>
+
+<!-- MOBILE FIXED BOTTOM THUMB BAR -->
+<nav class="mobile-bottom-bar" id="mobileBottomBar">
+  <div class="mobile-sub-palette" id="mobileSubPalette">
+    <div class="tool-group" id="mobColorSwatches"></div>
+    <div class="tool-group" id="mobSizeButtons"></div>
+    <button class="btn btn-sm" id="mobBtnLine" data-tool="line">📏 直线</button>
+  </div>
+  <div class="mobile-bar-grid">
+    <button class="mob-tool-btn active" data-tool="cursor"><span class="ico">🖱️</span><span>答题</span></button>
+    <button class="mob-tool-btn" data-tool="highlighter"><span class="ico">🖍️</span><span>荧光笔</span></button>
+    <button class="mob-tool-btn" data-tool="pen"><span class="ico">✏️</span><span>画笔</span></button>
+    <button class="mob-tool-btn" data-tool="eraser"><span class="ico">🧹</span><span>橡皮</span></button>
+    <button class="mob-tool-btn" id="mobBtnUndo"><span class="ico">↩️</span><span>撤销</span></button>
+    <button class="mob-tool-btn" id="mobBtnSheet"><span class="ico">📋</span><span>答题卡</span></button>
+  </div>
+</nav>
 
 <!-- PAUSE OVERLAY -->
 <div class="pause-overlay" id="pauseOverlay">
@@ -1036,6 +1176,7 @@ function applyThemeAndFont() {
   document.documentElement.style.setProperty("--q-font-size", state.fontSize + "px");
   const map = { light: "☀ 明亮", eyecare: "🌿 护眼", dark: "🌙 深色" };
   $("btnTheme").textContent = map[state.theme] || "☀ 明亮";
+  if ($("mobTheme")) $("mobTheme").textContent = map[state.theme] || "☀ 明亮";
   if (isQuizView) redrawAllCanvases();
 }
 
@@ -1177,7 +1318,7 @@ function startDeck(deck, key, title, jumpIdx = null) {
 }
 
 function syncModeTabs() {
-  document.querySelectorAll("#modeTabs .seg-tab").forEach(btn => {
+  document.querySelectorAll("#modeTabs .seg-tab, #mobileModeTabs .seg-tab").forEach(btn => {
     btn.classList.toggle("active", btn.dataset.mode === state.mode);
   });
 }
@@ -1495,6 +1636,7 @@ function bindCanvasStage(stageEl, drawKey, qId) {
     activePointerDrawKey = drawKey;
     lastEditedDrawKey = drawKey;
     strokesHidden = false;
+    penCanvas._tapMeta = { x: e.clientX, y: e.clientY, t: Date.now(), ptype: e.pointerType, moved: false };
     if (qId !== null) {
       const idx = currentDeck.findIndex(item => item.id === qId);
       if (idx >= 0) setActiveIdx(idx, false);
@@ -1520,6 +1662,9 @@ function bindCanvasStage(stageEl, drawKey, qId) {
   penCanvas.addEventListener("pointermove", (e) => {
     if (activePointerDrawKey !== drawKey || activeTool === "cursor") return;
     e.preventDefault();
+    if (penCanvas._tapMeta && Math.hypot(e.clientX - penCanvas._tapMeta.x, e.clientY - penCanvas._tapMeta.y) > 8) {
+      penCanvas._tapMeta.moved = true;
+    }
     const [rx, ry, W, H] = getRelPoint(stageEl, e);
 
     if (activeTool === "eraser") {
@@ -1543,9 +1688,12 @@ function bindCanvasStage(stageEl, drawKey, qId) {
     redrawSingleCanvas(drawKey);
   });
 
-  const finishStroke = () => {
+  const finishStroke = (e) => {
     if (activePointerDrawKey !== drawKey) return;
     activePointerDrawKey = null;
+    const meta = penCanvas._tapMeta;
+    penCanvas._tapMeta = null;
+
     if (activeTool === "eraser") {
       if (eraserDirty) {
         saveState();
@@ -1554,6 +1702,20 @@ function bindCanvasStage(stageEl, drawKey, qId) {
       }
       return;
     }
+
+    // Touch convenience: quick tap (<8px, <260ms) directly on an A/B/C/D circle selects that option without leaving Pen mode!
+    if (meta && meta.ptype === "touch" && !meta.moved && (Date.now() - meta.t) < 260 && e) {
+      const stack = document.elementsFromPoint(e.clientX, e.clientY);
+      const badge = stack.find(el => el.matches && el.matches(".opt-letter"));
+      const optEl = badge && badge.closest("[data-opt-q]");
+      if (optEl) {
+        currentStroke = null;
+        redrawSingleCanvas(drawKey);
+        selectOptionForQuestion(Number(optEl.dataset.optQ), Number(optEl.dataset.optIdx), optEl.dataset.letter);
+        return;
+      }
+    }
+
     if (currentStroke) {
       if (!state.drawings[drawKey]) state.drawings[drawKey] = [];
       state.drawings[drawKey].push(currentStroke);
@@ -1797,13 +1959,26 @@ function setDrawTool(tool, notify = false) {
   if (tips[tool]) $("drawModeTip").textContent = tips[tool];
   renderDrawToolbar();
   if (notify) {
-    const names = { cursor: "已切回：答题点击模式", highlighter: "荧光笔已开启（右键/中键可直接选选项，再按 H 关闭）", pen: "画笔已开启（右键/中键可直接选选项，再按 P 关闭）", line: "直线已开启（右键/中键可直接选选项，再按 L 关闭）", eraser: "橡皮擦已开启（再按 E 关闭）" };
+    const isMob = window.matchMedia("(max-width: 720px)").matches;
+    const names = isMob ? {
+      cursor: "已切回：答题滚动模式",
+      highlighter: "荧光笔已开启（轻点 A/B/C/D 圆圈可直接选答案）",
+      pen: "画笔已开启（轻点 A/B/C/D 圆圈可直接选答案）",
+      line: "直线工具已开启（拖动即画下划线）",
+      eraser: "橡皮擦已开启（划过涂鸦即擦除）"
+    } : {
+      cursor: "已切回：答题点击模式",
+      highlighter: "荧光笔已开启（右键/中键可直接选选项，再按 H 关闭）",
+      pen: "画笔已开启（右键/中键可直接选选项，再按 P 关闭）",
+      line: "直线已开启（右键/中键可直接选选项，再按 L 关闭）",
+      eraser: "橡皮擦已开启（再按 E 关闭）"
+    };
     showToast(names[tool]);
   }
 }
 
 function renderDrawToolbar() {
-  document.querySelectorAll("#drawToolbar [data-tool]").forEach(btn => {
+  document.querySelectorAll("#drawToolbar [data-tool], #mobileBottomBar [data-tool]").forEach(btn => {
     const t = btn.dataset.tool;
     btn.classList.remove("active", "active-hl", "active-pen", "active-eraser");
     if (t === activeTool) {
@@ -1817,20 +1992,29 @@ function renderDrawToolbar() {
   const isHL = activeTool === "highlighter";
   const palette = isHL ? HL_COLORS : PEN_COLORS;
   const curColor = isHL ? hlColor : penColor;
-  $("colorSwatches").innerHTML = palette.map(item => `
+  const swHtml = palette.map(item => `
     <button class="color-swatch ${item.c === curColor ? "active" : ""}"
       style="background:${item.c};" title="${item.name}" data-swatch="${item.c}"></button>
   `).join("");
+  $("colorSwatches").innerHTML = swHtml;
+  if ($("mobColorSwatches")) $("mobColorSwatches").innerHTML = swHtml;
 
   const sizes = isHL ? HL_SIZES : PEN_SIZES;
   const curW = isHL ? hlWidth : penWidth;
-  $("sizeButtons").innerHTML = sizes.map(s => `
+  const szHtml = sizes.map(s => `
     <button class="size-dot-btn ${s.w === curW ? "active" : ""}" title="粗细：${s.name}" data-size="${s.w}">
       <span class="size-dot" style="width:${s.dot}px;height:${s.dot}px;"></span>
     </button>
   `).join("");
+  $("sizeButtons").innerHTML = szHtml;
+  if ($("mobSizeButtons")) $("mobSizeButtons").innerHTML = szHtml;
 
-  $("btnToggleStrokes").textContent = strokesHidden ? "👁 已隐藏" : "👁 显隐";
+  const showMobSub = activeTool === "highlighter" || activeTool === "pen" || activeTool === "line";
+  $("mobileSubPalette")?.classList.toggle("show", showMobSub);
+
+  const eyeTxt = strokesHidden ? "👁 已隐藏" : "👁 显隐";
+  $("btnToggleStrokes").textContent = eyeTxt;
+  if ($("mobToggleStrokes")) $("mobToggleStrokes").textContent = eyeTxt;
 }
 
 function getTargetDrawKeyForUndo() {
@@ -2372,7 +2556,7 @@ function openSyncCenterModal() {
         <div style="font-size:12px;color:var(--text-3);margin-bottom:10px;">
           在 GitHub → Settings → Developer settings → Personal access tokens (classic) 生成一个仅勾选 <code>gist</code> 权限的 Token，首次上传会自动生成私有 Gist ID；在另一台设备填入相同 Token + Gist ID 即可互通。
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+        <div class="sync-input-grid">
           <input type="password" id="inpGistToken" placeholder="GitHub Token (ghp_...)" value="${escapeHtml(syncCfg.token || "")}"
             style="height:34px;border:1px solid var(--border);border-radius:8px;padding:0 10px;background:var(--surface-2);font-size:13px;" />
           <input type="text" id="inpGistId" placeholder="Gist ID（首次上传留空自动创建）" value="${escapeHtml(syncCfg.gistId || "")}"
@@ -2735,12 +2919,37 @@ $("importFile").addEventListener("change", (e) => {
   e.target.value = "";
 });
 
-$("modeTabs").addEventListener("click", (e) => {
+function handleModeSwitch(e) {
   const tab = e.target.closest("[data-mode]");
   if (!tab) return;
   state.mode = tab.dataset.mode;
   saveState(); syncModeTabs();
   renderFullFeed(); renderAnswerSheet();
+}
+$("modeTabs").addEventListener("click", handleModeSwitch);
+$("mobileModeTabs")?.addEventListener("click", handleModeSwitch);
+$("mobFontInc")?.addEventListener("click", () => $("btnFontInc").click());
+$("mobFontDec")?.addEventListener("click", () => $("btnFontDec").click());
+$("mobTheme")?.addEventListener("click", () => $("btnTheme").click());
+$("mobToggleStrokes")?.addEventListener("click", () => $("btnToggleStrokes").click());
+$("mobBtnUndo")?.addEventListener("click", () => $("btnUndo").click());
+$("mobBtnSheet")?.addEventListener("click", () => $("btnSheetMobile").click());
+$("mobileBottomBar")?.addEventListener("click", (e) => {
+  const toolBtn = e.target.closest("[data-tool]");
+  if (toolBtn) { toggleOrSetDrawTool(toolBtn.dataset.tool); return; }
+  const sw = e.target.closest("[data-swatch]");
+  if (sw) {
+    if (activeTool === "highlighter") hlColor = sw.dataset.swatch;
+    else penColor = sw.dataset.swatch;
+    updateDrawCursor(); applyToolbarVisibility(); renderDrawToolbar();
+    return;
+  }
+  const sz = e.target.closest("[data-size]");
+  if (sz) {
+    if (activeTool === "highlighter") hlWidth = Number(sz.dataset.size);
+    else penWidth = Number(sz.dataset.size);
+    updateDrawCursor(); renderDrawToolbar();
+  }
 });
 
 $("btnTimerToggle").addEventListener("click", () => togglePause());
