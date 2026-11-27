@@ -287,7 +287,8 @@ body.in-quiz .brand-sub { display: none; }
   background: var(--primary-soft); color: var(--primary);
   font-size: 13px; font-weight: 800; display: grid; place-items: center;
 }
-.ch-acc { font-size: 12.5px; font-weight: 700; padding: 3px 9px; border-radius: 99px; background: var(--surface-2); color: var(--text-2); }
+.ch-acc { font-size: 12.5px; font-weight: 700; padding: 3px 9px; border-radius: 99px; background: var(--surface-2); color: var(--text-2); white-space: nowrap; }
+.ch-acc.prog { background: var(--primary-soft); color: var(--primary); }
 .ch-acc.good { background: var(--green-soft); color: var(--green); }
 .ch-acc.mid { background: var(--orange-soft); color: var(--orange); }
 .ch-acc.low { background: var(--red-soft); color: var(--red); }
@@ -601,8 +602,8 @@ html[data-theme="dark"] .opt-fig-img {
   padding-top: 1px; white-space: pre-wrap;
 }
 .opt-elim-btn {
-  flex-shrink: 0; opacity: 0; transition: opacity .15s;
-  font-size: 12px; color: var(--text-3); padding: 2px 8px;
+  flex-shrink: 0; opacity: 0.85; transition: all .15s;
+  font-size: 12px; color: var(--text-2); padding: 2px 8px;
   border-radius: 6px; border: 1px solid var(--border); background: var(--surface-2);
   margin-top: 2px;
 }
@@ -1585,27 +1586,53 @@ function renderDashboard() {
   $("heroTitle").textContent = `${bank.icon || "📖"} ${bank.name} · ${bankQs.length} 题`;
   $("heroDesc").textContent = (bank.subtitle || "整卷一趟水连刷 · 内置官方答案") + " · 粉笔计时器 & 全屏自由涂改 · 跨设备云同步";
 
-  let answeredCnt = 0, correctCnt = 0, wrongCnt = 0, totalTime = 0;
-  let starCnt = 0, drawCnt = 0;
+  let answeredCnt = 0, totalTime = 0, starCnt = 0, drawCnt = 0;
+  let finishedAnsweredCnt = 0, finishedCorrectCnt = 0, wrongCnt = 0;
 
-  for (const q of bankQs) {
-    const a = state.answers[q.id];
-    if (a) {
-      answeredCnt++;
-      if (a === q.answer) correctCnt++;
-      else wrongCnt++;
+  const chapters = [...new Set(bankQs.map(q => q.chapter))].sort((a, b) => a - b);
+  const chMetaList = chapters.map(ch => {
+    const qs = bankQs.filter(q => q.chapter === ch);
+    const chKey = chapterDeckKey(bank.id, ch);
+    let done = 0, ok = 0, chSec = 0, draws = 0;
+    let hasPassage = false, hasImgs = false;
+    for (const q of qs) {
+      const a = state.answers[q.id];
+      if (a) {
+        done++;
+        answeredCnt++;
+        if (a === q.answer) ok++;
+      }
+      chSec += (state.qTimes[q.id] || 0);
+      totalTime += (state.qTimes[q.id] || 0);
+      if (state.starred[q.id]) starCnt++;
+      if ((state.drawings[String(q.id)] || []).length > 0 || (q.passageId && (state.drawings[q.passageId] || []).length > 0)) {
+        drawCnt++;
+      }
+      if ((state.drawings[String(q.id)] || []).length > 0) draws++;
+      if (q.passage) hasPassage = true;
+      if (q.stemImages && q.stemImages.length) hasImgs = true;
     }
-    totalTime += (state.qTimes[q.id] || 0);
-    if (state.starred[q.id]) starCnt++;
-    if ((state.drawings[String(q.id)] || []).length > 0 || (q.passageId && (state.drawings[q.passageId] || []).length > 0)) {
-      drawCnt++;
+    const isSubmitted = Boolean(state.chapterSubmitted[chKey]);
+    // Only reveal accuracy on Dashboard once the set is submitted OR fully completed in non-exam mode
+    const isSetFinished = isSubmitted || (qs.length > 0 && done === qs.length && state.mode !== "exam");
+    if (isSetFinished && done > 0) {
+      finishedAnsweredCnt += done;
+      finishedCorrectCnt += ok;
     }
-  }
+    // Count wrong questions from finished/submitted sets (or practice mode revealed questions)
+    for (const q of qs) {
+      const a = state.answers[q.id];
+      if (a && a !== q.answer && (isSubmitted || state.mode !== "exam")) {
+        wrongCnt++;
+      }
+    }
+    return { ch, qs, chKey, done, ok, chSec, draws, hasPassage, hasImgs, isSubmitted, isSetFinished };
+  });
 
-  const accPct = answeredCnt ? Math.round((correctCnt / answeredCnt) * 100) + "%" : "--";
+  const accPct = finishedAnsweredCnt ? Math.round((finishedCorrectCnt / finishedAnsweredCnt) * 100) + "%" : "--";
   $("heroStats").innerHTML = `
     <div class="stat-pill"><div class="val">${answeredCnt}<span style="font-size:13px;opacity:.75;"> / ${bankQs.length}</span></div><div class="lbl">累计已刷</div></div>
-    <div class="stat-pill"><div class="val">${accPct}</div><div class="lbl">总正确率</div></div>
+    <div class="stat-pill"><div class="val">${accPct}</div><div class="lbl">已完卷正确率</div></div>
     <div class="stat-pill"><div class="val">${fmtTime(totalTime)}</div><div class="lbl">累计刷题用时</div></div>
     <div class="stat-pill"><div class="val">${wrongCnt}</div><div class="lbl">待攻克错题</div></div>
   `;
@@ -1615,36 +1642,23 @@ function renderDashboard() {
 
   const grid = $("chapterGrid");
   grid.innerHTML = "";
-  const chapters = [...new Set(bankQs.map(q => q.chapter))].sort((a, b) => a - b);
-  for (const ch of chapters) {
-    const qs = bankQs.filter(q => q.chapter === ch);
-    let done = 0, ok = 0, chSec = 0, draws = 0;
-    let hasPassage = false, hasImgs = false;
-    for (const q of qs) {
-      if (state.answers[q.id]) {
-        done++;
-        if (state.answers[q.id] === q.answer) ok++;
-      }
-      chSec += (state.qTimes[q.id] || 0);
-      if ((state.drawings[String(q.id)] || []).length > 0) draws++;
-      if (q.passage) hasPassage = true;
-      if (q.stemImages && q.stemImages.length) hasImgs = true;
-    }
+  for (const item of chMetaList) {
+    const { ch, qs, done, ok, chSec, draws, hasPassage, hasImgs, isSetFinished } = item;
     const pct = qs.length ? Math.round((done / qs.length) * 100) : 0;
-    const acc = done ? Math.round((ok / done) * 100) : null;
-    const accCls = acc === null ? "" : (acc >= 80 ? "good" : acc >= 60 ? "mid" : "low");
-    const accTxt = acc === null ? "未开始" : `正确率 ${acc}%`;
+    const acc = (isSetFinished && done > 0) ? Math.round((ok / done) * 100) : null;
+    const accCls = done === 0 ? "" : (!isSetFinished ? "prog" : (acc >= 80 ? "good" : acc >= 60 ? "mid" : "low"));
+    const accTxt = done === 0 ? "未开始" : (!isSetFinished ? "刷题中" : `正确率 ${acc}%`);
     const histCnt = getChapterHistoryList(bank.id, ch).length;
     const roundBadge = histCnt > 0 ? `<span class="q-type-tag" style="font-size:11px;padding:1px 6px;color:var(--primary);background:var(--primary-soft);border-color:var(--primary-border);">第${histCnt + 1}刷</span>` : "";
     let tagHtml = "";
     if (bank.id === "yanyu600" && ch === 15) {
       tagHtml = `<span class="q-type-tag" style="font-size:11px;padding:1px 6px;">篇章阅读</span>`;
     } else if ((bank.id === "panduan600" || bank.id === "zhenti304") && hasPassage) {
-      tagHtml = `<span class="q-type-tag" style="font-size:11px;padding:1px 6px;">含一拖五</span>`;
+      tagHtml = `<span class="q-type-tag" style="font-size:11px;padding:1px 6px;">含材料题</span>`;
     } else if (hasImgs && bank.id !== "panduan600" && bank.id !== "zhenti304") {
       tagHtml = `<span class="q-type-tag" style="font-size:11px;padding:1px 6px;">含图</span>`;
     }
-    const btnLabel = done === 0 ? (histCnt > 0 ? `开始第${histCnt + 1}刷` : "开始刷题") : (done < qs.length ? "继续刷题" : "复盘");
+    const btnLabel = done === 0 ? (histCnt > 0 ? `开始第${histCnt + 1}刷` : "开始刷题") : (!isSetFinished ? "继续刷题" : "复盘");
     const chLabel = getChapterLabel(bank, ch);
 
     const card = document.createElement("div");
@@ -1661,7 +1675,7 @@ function renderDashboard() {
       </div>
       <div class="ch-actions">
         <button class="btn btn-primary btn-sm" data-open-ch="${ch}">${btnLabel}</button>
-        ${(done > 0 || histCnt > 0) ? `<button class="btn btn-sm" data-report-ch="${ch}">报告</button>` : ""}
+        ${(isSetFinished || histCnt > 0) ? `<button class="btn btn-sm" data-report-ch="${ch}">报告</button>` : ""}
         ${done > 0 ? `<button class="btn btn-sm btn-danger" data-redo-ch="${ch}" title="归档本次成绩并重做本套题">重做</button>` : ""}
       </div>
     `;
@@ -2510,11 +2524,12 @@ function updateSheetActive() {
 }
 
 // ================= TIMER =================
+let tabHiddenAt = 0;
 function startTimer() {
   stopTimer();
   updateTimerDisplay();
   timerInterval = setInterval(() => {
-    if (!isQuizView || timerPaused) return;
+    if (!isQuizView || timerPaused || document.hidden) return;
     const q = currentDeck[activeIdx];
     if (!q) return;
     sessionElapsedSec++;
@@ -2523,6 +2538,21 @@ function startTimer() {
     if (sessionElapsedSec % 5 === 0) saveState();
   }, 1000);
 }
+
+document.addEventListener("visibilitychange", () => {
+  if (!isQuizView) return;
+  if (document.hidden) {
+    tabHiddenAt = Date.now();
+    flushStateNow();
+    $("timerBox")?.classList.add("paused");
+  } else {
+    updateTimerDisplay();
+    if (tabHiddenAt && !timerPaused && (Date.now() - tabHiddenAt) >= 3000) {
+      showToast("⏱ 离开标签页期间已自动暂停计时，现已继续");
+    }
+    tabHiddenAt = 0;
+  }
+});
 
 function stopTimer() {
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
