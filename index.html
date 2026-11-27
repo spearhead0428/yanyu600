@@ -1210,16 +1210,23 @@ registerBankEntry({
   questions: []
 });
 
-// Built-in Bank 3: 国省考判断真题册（前三套：2021–2023国考真题）
+// Built-in Bank 3: 国省考判断真题册（持续更新：当前已含 2021–2026 完整6年国考真题）
 registerBankEntry({
   id: "zhenti304",
   name: "国省考判断真题",
   shortName: "判断真题",
-  subtitle: "小P公考2027版 · 2021–2023国考真题前三套（120题 · 含高清图推 & 一拖五）",
+  subtitle: "小P公考2027版 · 2021–2026国考真题完整6套（230题 · 含高清图推 & 一拖五）",
   icon: "🎯",
   chapterPrefix: "套",
-  chapterNames: { "1": "2021年国考副省级卷", "2": "2022年国考地市级卷", "3": "2023年国考地市级卷" },
-  count: 120,
+  chapterNames: {
+    "1": "2021年国考副省级卷",
+    "2": "2022年国考地市级卷",
+    "3": "2023年国考地市级卷",
+    "4": "2024年国考地市级卷",
+    "5": "2025年国考副省级卷",
+    "6": "2026年国考副省级卷"
+  },
+  count: 230,
   builtin: true,
   loaded: false,
   scriptSrc: "banks/zhenti304.js",
