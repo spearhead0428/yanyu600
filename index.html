@@ -2370,46 +2370,38 @@ function buildSvgCursor(svgBody, hx, hy, size = 28) {
 function updateDrawCursor() {
   const root = document.documentElement;
   if (activeTool === "pen") {
-    const r = Math.max(4, Math.min(8, penWidth + 2));
+    const r = Math.max(2.2, Math.min(4.2, penWidth * 0.85));
     const c = penColor;
-    // High-contrast colored dot with thick black outer halo + crisp white ring + precision cross ticks
+    // Compact, precise colored pen tip dot with crisp white + dark micro-ring
     const svg = `
-      <line x1="14" y1="1" x2="14" y2="7" stroke="#000" stroke-width="2.4" stroke-linecap="round"/>
-      <line x1="14" y1="21" x2="14" y2="27" stroke="#000" stroke-width="2.4" stroke-linecap="round"/>
-      <line x1="1" y1="14" x2="7" y2="14" stroke="#000" stroke-width="2.4" stroke-linecap="round"/>
-      <line x1="21" y1="14" x2="27" y2="14" stroke="#000" stroke-width="2.4" stroke-linecap="round"/>
-      <circle cx="14" cy="14" r="${r + 2.2}" fill="#000"/>
-      <circle cx="14" cy="14" r="${r + 1}" fill="#FFF"/>
-      <circle cx="14" cy="14" r="${r}" fill="${c}"/>
+      <circle cx="8" cy="8" r="${(r + 1.8).toFixed(1)}" fill="#111"/>
+      <circle cx="8" cy="8" r="${(r + 0.9).toFixed(1)}" fill="#FFF"/>
+      <circle cx="8" cy="8" r="${r.toFixed(1)}" fill="${c}"/>
     `;
-    root.style.setProperty("--draw-cursor", buildSvgCursor(svg, 14, 14, 28));
+    root.style.setProperty("--draw-cursor", buildSvgCursor(svg, 8, 8, 16));
   } else if (activeTool === "highlighter") {
     const c = hlColor;
-    // Bold high-contrast highlighter chisel marker with dark outline
     const svg = `
-      <rect x="6" y="3" width="16" height="22" rx="4" fill="${c}" fill-opacity="0.82" stroke="#111" stroke-width="2.2"/>
-      <line x1="9" y1="14" x2="19" y2="14" stroke="#111" stroke-width="2" stroke-linecap="round"/>
-      <circle cx="14" cy="14" r="2.2" fill="#111"/>
+      <rect x="5" y="2" width="8" height="14" rx="2.2" fill="${c}" fill-opacity="0.82" stroke="#111" stroke-width="1.4"/>
+      <circle cx="9" cy="9" r="1.3" fill="#111"/>
     `;
-    root.style.setProperty("--draw-cursor", buildSvgCursor(svg, 14, 14, 28));
+    root.style.setProperty("--draw-cursor", buildSvgCursor(svg, 9, 9, 18));
   } else if (activeTool === "line") {
     const c = penColor;
-    // Bold black-outlined colored crosshair (impossible to miss on white or dark!)
     const svg = `
-      <line x1="14" y1="2" x2="14" y2="26" stroke="#000" stroke-width="4" stroke-linecap="round"/>
-      <line x1="2" y1="14" x2="26" y2="14" stroke="#000" stroke-width="4" stroke-linecap="round"/>
-      <line x1="14" y1="3" x2="14" y2="25" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
-      <line x1="3" y1="14" x2="25" y2="14" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
-      <circle cx="14" cy="14" r="2.5" fill="#FFF" stroke="#000" stroke-width="1.2"/>
+      <line x1="8" y1="2" x2="8" y2="14" stroke="#111" stroke-width="2.6" stroke-linecap="round"/>
+      <line x1="2" y1="8" x2="14" y2="8" stroke="#111" stroke-width="2.6" stroke-linecap="round"/>
+      <line x1="8" y1="2.5" x2="8" y2="13.5" stroke="${c}" stroke-width="1.3" stroke-linecap="round"/>
+      <line x1="2.5" y1="8" x2="13.5" y2="8" stroke="${c}" stroke-width="1.3" stroke-linecap="round"/>
     `;
-    root.style.setProperty("--draw-cursor", buildSvgCursor(svg, 14, 14, 28));
+    root.style.setProperty("--draw-cursor", buildSvgCursor(svg, 8, 8, 16));
   } else if (activeTool === "eraser") {
     const svg = `
-      <circle cx="14" cy="14" r="10" fill="#FFF" fill-opacity="0.88" stroke="#111" stroke-width="2.2"/>
-      <line x1="10" y1="10" x2="18" y2="18" stroke="#E53935" stroke-width="2.2" stroke-linecap="round"/>
-      <line x1="18" y1="10" x2="10" y2="18" stroke="#E53935" stroke-width="2.2" stroke-linecap="round"/>
+      <circle cx="9" cy="9" r="6.5" fill="#FFF" fill-opacity="0.88" stroke="#111" stroke-width="1.5"/>
+      <line x1="6.5" y1="6.5" x2="11.5" y2="11.5" stroke="#E53935" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="11.5" y1="6.5" x2="6.5" y2="11.5" stroke="#E53935" stroke-width="1.6" stroke-linecap="round"/>
     `;
-    root.style.setProperty("--draw-cursor", buildSvgCursor(svg, 14, 14, 28));
+    root.style.setProperty("--draw-cursor", buildSvgCursor(svg, 9, 9, 18));
   } else {
     root.style.removeProperty("--draw-cursor");
   }
