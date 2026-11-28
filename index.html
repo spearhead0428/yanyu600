@@ -609,6 +609,34 @@ html[data-theme="dark"] .opt-fig-img {
 }
 .option-item:hover .opt-elim-btn, .option-item.eliminated .opt-elim-btn { opacity: 1; }
 .opt-elim-btn:hover { color: var(--red); border-color: var(--red-border); background: var(--red-soft); }
+.opt-elim-locked {
+  flex-shrink: 0; font-size: 11.5px; font-weight: 600;
+  color: var(--text-3); padding: 2px 7px;
+  border-radius: 6px; border: 1px dashed var(--border-strong); background: var(--surface-2);
+  margin-top: 2px; cursor: not-allowed; user-select: none;
+}
+.review-mode-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 28px; padding: 0 9px; border-radius: 99px;
+  font-size: 12px; font-weight: 700;
+  color: #862E9C; background: rgba(156, 54, 181, 0.12);
+  border: 1px solid rgba(156, 54, 181, 0.34);
+  white-space: nowrap;
+}
+html[data-theme="dark"] .review-mode-pill {
+  color: #E599F7; background: rgba(218, 119, 242, 0.16); border-color: rgba(218, 119, 242, 0.42);
+}
+.flag-btn.review-clear, .tool-btn.review-clear {
+  color: #862E9C; background: rgba(156, 54, 181, 0.10);
+  border-color: rgba(156, 54, 181, 0.32);
+}
+.flag-btn.review-clear:hover, .tool-btn.review-clear:hover {
+  background: rgba(156, 54, 181, 0.20); color: #6B1F80;
+}
+html[data-theme="dark"] .flag-btn.review-clear,
+html[data-theme="dark"] .tool-btn.review-clear {
+  color: #E599F7; background: rgba(218, 119, 242, 0.15); border-color: rgba(218, 119, 242, 0.38);
+}
 .option-item.eliminated { opacity: 0.48; background: var(--surface-2); }
 .option-item.eliminated .opt-text { text-decoration: line-through; color: var(--text-3); }
 .option-item.selected { border-color: var(--primary); background: var(--primary-soft); }
@@ -1004,6 +1032,7 @@ html[data-theme="dark"] .opt-fig-img {
     <div class="toolbar-sticky" id="toolbarSticky">
       <div class="draw-toolbar" id="drawToolbar">
         <div class="tool-group">
+          <span class="review-mode-pill hidden" id="reviewModePill" title="做题时的原批注与选项排除已锁定，当前新增批注为紫色复盘层，可随时清除">🔍 复盘批注</span>
           <button class="tool-btn active" data-tool="cursor" title="答题点击模式 (V / Esc)">🖱️ 答题 <span class="kbd">V</span></button>
           <button class="tool-btn" data-tool="highlighter" title="荧光笔（再按 H 关闭）">🖍️ 荧光笔 <span class="kbd">H</span></button>
           <button class="tool-btn" data-tool="pen" title="自由画笔（再按 P 关闭）">✏️ 画笔 <span class="kbd">P</span></button>
@@ -1020,6 +1049,7 @@ html[data-theme="dark"] .opt-fig-img {
           <button class="tool-btn" id="btnUndo" title="撤销上一笔 (Ctrl+Z)">↩ 撤销</button>
           <button class="tool-btn" id="btnRedo" title="重做 (Ctrl+Y)">↪ 重做</button>
           <button class="tool-btn" id="btnToggleStrokes" title="隐藏/显示全部涂改">👁 显隐</button>
+          <button class="tool-btn review-clear hidden" id="btnClearAllReview" title="一键清空本套题所有复盘批注（做题原批注已锁定不受影响）">🧹 清复盘</button>
           <button class="tool-btn" id="btnShortcuts" title="快捷键说明">⌨</button>
           <button class="tool-btn" id="btnHideToolbar" title="隐藏工具栏 (快捷键 T)">▴ 隐藏</button>
         </div>
@@ -1082,6 +1112,7 @@ html[data-theme="dark"] .opt-fig-img {
     <div class="sheet-grid" id="sheetGrid"></div>
     <div class="sheet-foot">
       <button class="btn btn-primary" id="btnSubmitSheet">交卷并查看评估报告</button>
+      <button class="btn btn-sm hidden" id="btnClearAllReviewSheet" style="color:#862E9C;border-color:rgba(156,54,181,0.35);background:rgba(156,54,181,0.08);">🧹 清空本套复盘批注</button>
       <button class="btn btn-sm btn-danger" id="btnResetDeck">↺ 重做本套题</button>
     </div>
   </aside>
@@ -1495,12 +1526,15 @@ const redoStacks = new Map(); // drawKey -> Array<Stroke>
 let activeTool = "cursor"; // cursor | highlighter | pen | line | eraser
 let penColor = "#E53935";
 let hlColor = "#FFE033";
+let reviewPenColor = "#9C36B5";
+let reviewHlColor = "#74C0FC";
 let penWidth = 3.2;
 let hlWidth = 22;
 let strokesHidden = false;
 let activePointerDrawKey = null;
 let currentStroke = null;
 let eraserDirty = false;
+let lastLockToastAt = 0;
 
 const PEN_COLORS = [
   { c: "#E53935", name: "红笔" },
@@ -1509,11 +1543,24 @@ const PEN_COLORS = [
   { c: "#FA8C16", name: "橙笔" },
   { c: "#00B578", name: "绿笔" }
 ];
+const REVIEW_PEN_COLORS = [
+  { c: "#9C36B5", name: "复盘紫" },
+  { c: "#0CA678", name: "复盘青" },
+  { c: "#D6336C", name: "复盘玫红" },
+  { c: "#1971C2", name: "复盘深蓝" },
+  { c: "#A66E38", name: "复盘棕" }
+];
 const HL_COLORS = [
   { c: "#FFE033", name: "荧光黄" },
   { c: "#6CE89D", name: "荧光绿" },
   { c: "#FF8FB1", name: "荧光粉" },
   { c: "#7CC4FF", name: "荧光蓝" }
+];
+const REVIEW_HL_COLORS = [
+  { c: "#74C0FC", name: "复盘冰蓝" },
+  { c: "#D0BFFF", name: "复盘浅紫" },
+  { c: "#96F2D7", name: "复盘薄荷" },
+  { c: "#FFC078", name: "复盘浅橙" }
 ];
 const PEN_SIZES = [
   { w: 2.0, dot: 5, name: "细" },
@@ -1777,6 +1824,62 @@ function syncModeTabs() {
   });
 }
 
+function isQuestionInReview(q) {
+  if (isReviewingMode()) return true;
+  if (q && state.answers[q.id] && isRevealed(q)) return true;
+  return false;
+}
+
+function isDrawKeyInReview(drawKey) {
+  if (isReviewingMode()) return true;
+  const ctrl = canvasControllers.get(String(drawKey));
+  if (ctrl && ctrl.qId !== null) {
+    const q = currentDeck.find(item => String(item.id) === String(ctrl.qId));
+    return isQuestionInReview(q);
+  }
+  return false;
+}
+
+function hasAnyDeckReviewDrawings() {
+  const seen = new Set();
+  for (const q of currentDeck) {
+    if ((state.drawings[String(q.id)] || []).some(s => s && s.review)) return true;
+    if (q.passageId && !seen.has(q.passageId)) {
+      seen.add(q.passageId);
+      if ((state.drawings[q.passageId] || []).some(s => s && s.review)) return true;
+    }
+  }
+  return false;
+}
+
+function clearAllDeckReviewDrawings() {
+  let cleared = 0;
+  const keys = new Set();
+  for (const q of currentDeck) {
+    keys.add(String(q.id));
+    if (q.passageId) keys.add(q.passageId);
+  }
+  keys.forEach(k => {
+    const arr = state.drawings[k] || [];
+    const kept = arr.filter(s => !(s && s.review));
+    if (kept.length !== arr.length) {
+      cleared += (arr.length - kept.length);
+      state.drawings[k] = kept;
+      redoStacks.set(k, []);
+      redrawSingleCanvas(k);
+      updateClearBtnVisibility(k);
+    }
+  });
+  if (cleared > 0) {
+    saveState(true);
+    renderAnswerSheet();
+    renderDrawToolbar();
+    showToast(`🧹 已清空本套题全部复盘批注（共 ${cleared} 笔），做题原批注已保留`);
+  } else {
+    showToast("当前没有可清空的复盘批注");
+  }
+}
+
 function isRevealed(q) {
   if (state.mode === "study") return true;
   if (state.mode === "exam") return deckSubmitted;
@@ -1857,6 +1960,13 @@ function renderFullFeed() {
       const pImgsHtml = (q.passageImages && q.passageImages.length)
         ? `<div class="q-fig-wrap">${q.passageImages.map((src, i) => `<img class="q-fig-img" src="${escapeHtml(src)}" alt="材料图示${i + 1}" loading="lazy" />`).join("")}</div>`
         : "";
+      const pReview = isReviewingMode();
+      const pStrokes = state.drawings[q.passageId] || [];
+      const pHasDraw = pStrokes.length > 0;
+      const pHasReviewDraw = pStrokes.some(s => s && s.review);
+      const pClearBtnHtml = pReview
+        ? `<button class="btn btn-sm review-clear ${pHasReviewDraw ? "" : "hidden"}" id="btn-clear-rev-${escapeHtml(q.passageId)}" data-clear-review-draw="${escapeHtml(q.passageId)}" title="清空本材料复盘批注（保留做题原批注）">🧹 清复盘批注</button>`
+        : `<button class="btn btn-sm ${pHasDraw ? "" : "hidden"}" id="btn-clear-q-${escapeHtml(q.passageId)}" data-clear-draw="${escapeHtml(q.passageId)}">🗑 清空材料涂改</button>`;
       pStage.innerHTML = `
         <canvas class="draw-canvas-hl"></canvas>
         <canvas class="draw-canvas-pen"></canvas>
@@ -1865,7 +1975,7 @@ function renderFullFeed() {
           <div class="passage-head">
             <div class="passage-title">${pKindLabel}（第 ${firstNo}–${lastNo} 题共用${q.source ? " · " + escapeHtml(q.source) : ""}）</div>
             <div style="display:flex;gap:6px;">
-              <button class="btn btn-sm" data-clear-draw="${escapeHtml(q.passageId)}">🗑 清空材料涂改</button>
+              ${pClearBtnHtml}
               <button class="btn btn-sm" data-toggle-passage="${escapeHtml(q.passageId)}">收起材料</button>
             </div>
           </div>
@@ -1913,10 +2023,13 @@ function renderFullFeed() {
 function buildQuestionCardHtml(q, idx) {
   const userAns = state.answers[q.id] || null;
   const revealed = isRevealed(q);
+  const inReview = isQuestionInReview(q);
   const elimMap = state.eliminated[q.id] || {};
   const isStar = Boolean(state.starred[q.id]);
   const isMark = Boolean(state.marked[q.id]);
-  const hasDraw = (state.drawings[String(q.id)] || []).length > 0;
+  const qStrokes = state.drawings[String(q.id)] || [];
+  const hasDraw = qStrokes.length > 0;
+  const hasReviewDraw = qStrokes.some(s => s && s.review);
   const noteVal = state.notes[q.id] || "";
   const showAnsPanel = revealed || Boolean(noteVal);
   const bank = BANK_REGISTRY.get(q.bankId) || getActiveBank();
@@ -1929,7 +2042,8 @@ function buildQuestionCardHtml(q, idx) {
 
   const optsHtml = ["A", "B", "C", "D"].map(letter => {
     let cls = "option-item";
-    if (elimMap[letter] && !revealed) cls += " eliminated";
+    // Preserve eliminated visual trace even in review so user can see what they eliminated during solving!
+    if (elimMap[letter]) cls += " eliminated";
     if (revealed) {
       if (letter === q.answer) cls += " correct";
       else if (userAns === letter && letter !== q.answer) cls += " wrong";
@@ -1940,11 +2054,14 @@ function buildQuestionCardHtml(q, idx) {
     const optBody = optImgSrc
       ? `<img class="opt-fig-img" src="${escapeHtml(optImgSrc)}" alt="选项${letter}" loading="lazy" />`
       : `<span class="opt-text">${escapeHtml(q.options[letter] || "")}</span>`;
+    const elimCtrlHtml = inReview
+      ? (elimMap[letter] ? `<span class="opt-elim-locked" title="做题时已排除（复盘模式已锁定，不可更改）">🔒 已排除</span>` : "")
+      : `<button class="opt-elim-btn" data-elim-q="${escapeHtml(q.id)}" data-elim-idx="${idx}" data-letter="${letter}" title="排除/恢复此选项（也可右键选项）">${elimMap[letter] ? "恢复" : "排除"}</button>`;
     return `
       <div class="${cls}" data-opt-q="${escapeHtml(q.id)}" data-opt-idx="${idx}" data-letter="${letter}">
         <span class="opt-letter">${letter}</span>
         ${optBody}
-        <button class="opt-elim-btn" data-elim-q="${escapeHtml(q.id)}" data-elim-idx="${idx}" data-letter="${letter}" title="排除/恢复此选项（也可右键选项）">${elimMap[letter] ? "恢复" : "排除"}</button>
+        ${elimCtrlHtml}
       </div>
     `;
   }).join("");
@@ -1956,6 +2073,10 @@ function buildQuestionCardHtml(q, idx) {
   const userDisp = userAns
     ? `<span class="${revealed ? (userAns === q.answer ? "ans-user-ok" : "ans-user-bad") : ""}">${userAns}${revealed ? (userAns === q.answer ? " ✓ 正确" : " ✕ 错误") : "（已选）"}</span>`
     : `<span>未作答</span>`;
+
+  const clearBtnHtml = inReview
+    ? `<button class="flag-btn review-clear ${hasReviewDraw ? "" : "hidden"}" id="btn-clear-rev-${escapeHtml(q.id)}" data-clear-review-draw="${escapeHtml(q.id)}" title="清空本题复盘批注（保留做题原批注）">🧹 清复盘批注</button>`
+    : `<button class="flag-btn ${hasDraw ? "" : "hidden"}" id="btn-clear-q-${escapeHtml(q.id)}" data-clear-draw="${escapeHtml(q.id)}" title="清空本题涂改">🗑 清涂改</button>`;
 
   return `
     <div class="question-stage" data-draw-key="${escapeHtml(q.id)}">
@@ -1971,7 +2092,7 @@ function buildQuestionCardHtml(q, idx) {
           </div>
           <div class="q-meta-right">
             <span class="q-timer-tag" id="qtimer-${escapeHtml(q.id)}">⏱ ${fmtTime(state.qTimes[q.id] || 0)}</span>
-            <button class="flag-btn ${hasDraw ? "" : "hidden"}" id="btn-clear-q-${escapeHtml(q.id)}" data-clear-draw="${escapeHtml(q.id)}" title="清空本题涂改">🗑 清涂改</button>
+            ${clearBtnHtml}
             <button class="flag-btn ${isMark ? "marked" : ""}" data-mark-q="${escapeHtml(q.id)}" data-idx="${idx}">${isMark ? "🚩 已存疑" : "🚩 存疑"}</button>
             <button class="flag-btn ${isStar ? "starred" : ""}" data-star-q="${escapeHtml(q.id)}" data-idx="${idx}">${isStar ? "★ 已收藏" : "☆ 收藏"}</button>
             <button class="flag-btn" data-note-toggle="${escapeHtml(q.id)}">📝 笔记</button>
@@ -1991,7 +2112,7 @@ function buildQuestionCardHtml(q, idx) {
           <span style="color:var(--text-3);font-size:13px;">耗时：<b id="anstime-${escapeHtml(q.id)}">${fmtTime(state.qTimes[q.id] || 0)}</b></span>
         </div>
         <div style="display:flex;gap:8px;">
-          ${userAns ? `<button class="btn btn-sm" data-reset-q="${escapeHtml(q.id)}" data-idx="${idx}">↺ 重做本题</button>` : ""}
+          ${(userAns && !isReviewingMode()) ? `<button class="btn btn-sm" data-reset-q="${escapeHtml(q.id)}" data-idx="${idx}">↺ 重做本题</button>` : ""}
         </div>
       </div>
       ${revealed && q.analysis ? `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);font-size:13.5px;line-height:1.7;color:var(--text-2);"><b>解析：</b>${escapeHtml(q.analysis)}</div>` : ""}
@@ -2046,6 +2167,8 @@ function setActiveIdx(idx, scrollIntoView = false) {
     }
   }
   updateSheetActive();
+  renderDrawToolbar();
+  updateDrawCursor();
 }
 
 function selectOptionForQuestion(qId, idx, letter) {
@@ -2056,17 +2179,36 @@ function selectOptionForQuestion(qId, idx, letter) {
     showToast("当前为背题模式，切回「刷题/模考模式」即可作答");
     return;
   }
+  if (isReviewingMode()) {
+    showToast("🔒 复盘模式下不可修改已提交的作答选项");
+    return;
+  }
   if (state.mode === "practice" && state.answers[q.id]) {
     return;
   }
+  const wasReview = isReviewingMode();
   state.answers[q.id] = letter;
   saveState();
-  refreshSingleQuestionCard(idx);
+  if (!wasReview && isReviewingMode()) {
+    // Just finished the very last question -> lock all cards into review cleanly
+    renderFullFeed();
+    renderDrawToolbar();
+    updateDrawCursor();
+  } else {
+    refreshSingleQuestionCard(idx);
+    renderDrawToolbar();
+    updateDrawCursor();
+  }
   renderAnswerSheet();
   updateTimerDisplay();
 }
 
 function toggleEliminate(qId, idx, letter) {
+  const q = currentDeck[idx];
+  if (q && isQuestionInReview(q)) {
+    showToast("🔒 复盘模式下不可修改做题时的选项排除");
+    return;
+  }
   const key = String(qId);
   if (!state.eliminated[key]) state.eliminated[key] = {};
   state.eliminated[key][letter] = !state.eliminated[key][letter];
@@ -2120,8 +2262,8 @@ function bindCanvasStage(stageEl, drawKey, qId) {
         selectOptionForQuestion(optEl.dataset.optQ, Number(optEl.dataset.optIdx), optEl.dataset.letter);
         return;
       }
-      // Also allow right/middle click on star/mark/note/clear/collapse buttons underneath
-      const actionBtn = stack.find(el => el.matches && el.matches("[data-star-q], [data-mark-q], [data-note-toggle], [data-toggle-passage]"));
+      // Also allow right/middle click on star/mark/note/clear-review/collapse buttons underneath
+      const actionBtn = stack.find(el => el.matches && el.matches("[data-star-q], [data-mark-q], [data-note-toggle], [data-toggle-passage], [data-clear-review-draw]"));
       if (actionBtn) actionBtn.click();
       return;
     }
@@ -2146,12 +2288,17 @@ function bindCanvasStage(stageEl, drawKey, qId) {
       return;
     }
 
+    const isRevCard = isDrawKeyInReview(drawKey);
     currentStroke = {
       tool: activeTool,
-      color: activeTool === "highlighter" ? hlColor : penColor,
+      color: activeTool === "highlighter"
+        ? (isRevCard ? reviewHlColor : hlColor)
+        : (isRevCard ? reviewPenColor : penColor),
       width: activeTool === "highlighter" ? hlWidth : penWidth,
+      review: isRevCard ? true : undefined,
       pts: [[rx, ry]]
     };
+    if (!isRevCard) delete currentStroke.review;
     redoStacks.set(drawKey, []);
     redrawSingleCanvas(drawKey);
   });
@@ -2228,10 +2375,18 @@ function bindCanvasStage(stageEl, drawKey, qId) {
 }
 
 function updateClearBtnVisibility(drawKey) {
+  const strokes = state.drawings[drawKey] || [];
   const btn = $(`btn-clear-q-${drawKey}`);
   if (btn) {
-    btn.classList.toggle("hidden", (state.drawings[drawKey] || []).length === 0);
+    btn.classList.toggle("hidden", strokes.length === 0);
   }
+  const revBtn = $(`btn-clear-rev-${drawKey}`);
+  if (revBtn) {
+    revBtn.classList.toggle("hidden", !strokes.some(s => s && s.review));
+  }
+  const hasAnyRev = hasAnyDeckReviewDrawings();
+  $("btnClearAllReview")?.classList.toggle("hidden", !hasAnyRev);
+  $("btnClearAllReviewSheet")?.classList.toggle("hidden", !hasAnyRev);
 }
 
 function resizeSingleCanvas(drawKey) {
@@ -2250,27 +2405,17 @@ function resizeSingleCanvas(drawKey) {
   });
 }
 
-function drawSingleStroke(ctx, st, W, H, dpr) {
-  if (!st.pts || st.pts.length === 0) return;
-  ctx.save();
-  ctx.scale(dpr, dpr);
-  ctx.strokeStyle = st.color;
-  ctx.lineWidth = st.width;
-  ctx.lineCap = st.tool === "highlighter" ? "butt" : "round";
-  ctx.lineJoin = "round";
-  ctx.globalAlpha = st.tool === "highlighter" ? 0.42 : 0.94;
-
+function traceStrokePath(ctx, st, W, H) {
   const pts = st.pts;
   ctx.beginPath();
   if (pts.length === 1) {
     const x = pts[0][0] * W, y = pts[0][1] * H;
     ctx.arc(x, y, st.width / 2, 0, Math.PI * 2);
-    ctx.fillStyle = st.color;
-    ctx.fill();
+    return true; // dot
   } else if (st.tool === "line") {
     ctx.moveTo(pts[0][0] * W, pts[0][1] * H);
     ctx.lineTo(pts[pts.length - 1][0] * W, pts[pts.length - 1][1] * H);
-    ctx.stroke();
+    return false;
   } else {
     ctx.moveTo(pts[0][0] * W, pts[0][1] * H);
     for (let i = 1; i < pts.length - 1; i++) {
@@ -2281,6 +2426,43 @@ function drawSingleStroke(ctx, st, W, H, dpr) {
     }
     const last = pts[pts.length - 1];
     ctx.lineTo(last[0] * W, last[1] * H);
+    return false;
+  }
+}
+
+function drawSingleStroke(ctx, st, W, H, dpr, cardInReview = false) {
+  if (!st.pts || st.pts.length === 0) return;
+  ctx.save();
+  ctx.scale(dpr, dpr);
+  ctx.lineCap = st.tool === "highlighter" ? "butt" : "round";
+  ctx.lineJoin = "round";
+
+  const isRev = Boolean(st.review);
+
+  // Subtle distinctive glow halo under review pen/line strokes so review notes stand out clearly from exam marks
+  if (isRev && st.tool !== "highlighter" && st.pts.length > 1) {
+    ctx.save();
+    ctx.strokeStyle = "rgba(156, 54, 181, 0.22)";
+    ctx.lineWidth = st.width + 5.5;
+    ctx.globalAlpha = 1;
+    traceStrokePath(ctx, st, W, H);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.strokeStyle = st.color;
+  ctx.lineWidth = st.width;
+  if (st.tool === "highlighter") {
+    ctx.globalAlpha = isRev ? 0.48 : (cardInReview ? 0.34 : 0.42);
+  } else {
+    ctx.globalAlpha = isRev ? 0.98 : (cardInReview ? 0.76 : 0.94);
+  }
+
+  const isDot = traceStrokePath(ctx, st, W, H);
+  if (isDot) {
+    ctx.fillStyle = st.color;
+    ctx.fill();
+  } else {
     ctx.stroke();
   }
   ctx.restore();
@@ -2296,12 +2478,17 @@ function redrawSingleCanvas(drawKey) {
   ctrl.penCtx.clearRect(0, 0, ctrl.penCanvas.width, ctrl.penCanvas.height);
   if (strokesHidden || !W || !H) return;
 
+  const cardInRev = isDrawKeyInReview(drawKey);
   const strokes = state.drawings[drawKey] || [];
+  // Draw locked solve strokes first, then review strokes on top so review annotations are never buried
   for (const st of strokes) {
-    drawSingleStroke(st.tool === "highlighter" ? ctrl.hlCtx : ctrl.penCtx, st, W, H, dpr);
+    if (!st.review) drawSingleStroke(st.tool === "highlighter" ? ctrl.hlCtx : ctrl.penCtx, st, W, H, dpr, cardInRev);
+  }
+  for (const st of strokes) {
+    if (st.review) drawSingleStroke(st.tool === "highlighter" ? ctrl.hlCtx : ctrl.penCtx, st, W, H, dpr, cardInRev);
   }
   if (activePointerDrawKey === drawKey && currentStroke) {
-    drawSingleStroke(currentStroke.tool === "highlighter" ? ctrl.hlCtx : ctrl.penCtx, currentStroke, W, H, dpr);
+    drawSingleStroke(currentStroke.tool === "highlighter" ? ctrl.hlCtx : ctrl.penCtx, currentStroke, W, H, dpr, cardInRev);
   }
 }
 
@@ -2330,8 +2517,10 @@ function distToSegment(px, py, x1, y1, x2, y2) {
 
 function eraseAtPoint(drawKey, rx, ry, W, H) {
   const strokes = state.drawings[drawKey] || [];
+  const locked = isDrawKeyInReview(drawKey);
   const px = rx * W, py = ry * H;
   let removed = false;
+  let hitLocked = false;
   for (let i = strokes.length - 1; i >= 0; i--) {
     const st = strokes[i];
     const thresh = Math.max(14, st.width * 0.75);
@@ -2350,6 +2539,10 @@ function eraseAtPoint(drawKey, rx, ry, W, H) {
       }
     }
     if (hit) {
+      if (locked && !st.review) {
+        hitLocked = true;
+        continue;
+      }
       const [del] = strokes.splice(i, 1);
       if (!redoStacks.has(drawKey)) redoStacks.set(drawKey, []);
       redoStacks.get(drawKey).push(del);
@@ -2359,6 +2552,9 @@ function eraseAtPoint(drawKey, rx, ry, W, H) {
   if (removed) {
     eraserDirty = true;
     redrawSingleCanvas(drawKey);
+  } else if (hitLocked && Date.now() - lastLockToastAt > 2500) {
+    lastLockToastAt = Date.now();
+    showToast("🔒 做题时的原批注已锁定，橡皮仅可擦除复盘批注");
   }
 }
 
@@ -2367,12 +2563,20 @@ function buildSvgCursor(svgBody, hx, hy, size = 28) {
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${hx} ${hy}, crosshair`;
 }
 
+function getActivePenPaletteMode() {
+  if (isReviewingMode()) return true;
+  const q = currentDeck[activeIdx];
+  return Boolean(q && isQuestionInReview(q));
+}
+
 function updateDrawCursor() {
   const root = document.documentElement;
+  const isRev = getActivePenPaletteMode();
+  const activePenC = isRev ? reviewPenColor : penColor;
+  const activeHlC = isRev ? reviewHlColor : hlColor;
   if (activeTool === "pen") {
     const r = Math.max(2.2, Math.min(4.2, penWidth * 0.85));
-    const c = penColor;
-    // Compact, precise colored pen tip dot with crisp white + dark micro-ring
+    const c = activePenC;
     const svg = `
       <circle cx="8" cy="8" r="${(r + 1.8).toFixed(1)}" fill="#111"/>
       <circle cx="8" cy="8" r="${(r + 0.9).toFixed(1)}" fill="#FFF"/>
@@ -2380,14 +2584,14 @@ function updateDrawCursor() {
     `;
     root.style.setProperty("--draw-cursor", buildSvgCursor(svg, 8, 8, 16));
   } else if (activeTool === "highlighter") {
-    const c = hlColor;
+    const c = activeHlC;
     const svg = `
       <rect x="5" y="2" width="8" height="14" rx="2.2" fill="${c}" fill-opacity="0.82" stroke="#111" stroke-width="1.4"/>
       <circle cx="9" cy="9" r="1.3" fill="#111"/>
     `;
     root.style.setProperty("--draw-cursor", buildSvgCursor(svg, 9, 9, 18));
   } else if (activeTool === "line") {
-    const c = penColor;
+    const c = activePenC;
     const svg = `
       <line x1="8" y1="2" x2="8" y2="14" stroke="#111" stroke-width="2.6" stroke-linecap="round"/>
       <line x1="2" y1="8" x2="14" y2="8" stroke="#111" stroke-width="2.6" stroke-linecap="round"/>
@@ -2413,7 +2617,10 @@ function applyToolbarVisibility() {
   const btn = $("btnToggleToolbarTop");
   const dot = $("topToolDot");
   if (btn && dot) {
-    const toolColor = activeTool === "highlighter" ? hlColor : (activeTool === "pen" || activeTool === "line") ? penColor : activeTool === "eraser" ? "#FA8C16" : "";
+    const isRev = getActivePenPaletteMode();
+    const curHl = isRev ? reviewHlColor : hlColor;
+    const curPen = isRev ? reviewPenColor : penColor;
+    const toolColor = activeTool === "highlighter" ? curHl : (activeTool === "pen" || activeTool === "line") ? curPen : activeTool === "eraser" ? "#FA8C16" : "";
     dot.style.background = toolColor || "var(--text-3)";
     const labelMap = { cursor: "工具栏", highlighter: "荧光笔", pen: "画笔", line: "直线", eraser: "橡皮" };
     btn.innerHTML = `<span class="tool-pill-dot" id="topToolDot" style="background:${toolColor || "var(--text-3)"}"></span> ${hidden ? (activeTool === "cursor" ? "展开工具栏" : labelMap[activeTool] + "·展开") : "隐藏工具栏"}`;
@@ -2439,7 +2646,13 @@ function setDrawTool(tool, notify = false) {
   updateDrawCursor();
   applyToolbarVisibility();
 
-  const tips = {
+  const isRev = getActivePenPaletteMode();
+  const tips = isRev ? {
+    highlighter: "🔍 复盘荧光笔中：做题原批注已锁定，当前高亮为复盘层（可随时清空）；再按 H 退出",
+    pen: "🔍 复盘画笔中：做题原批注已锁定，当前笔迹为紫色光晕复盘层（可随时清空）；再按 P 退出",
+    line: "🔍 复盘直线中：做题原批注已锁定，当前直线为复盘层（可随时清空）；再按 L 退出",
+    eraser: "🧹 复盘橡皮擦中：仅可擦除复盘批注，做题时的原批注已锁定保护；再按 E 退出"
+  } : {
     highlighter: "🖍️ 荧光笔中：左键高亮，右键或中键点选项直接作答（无需退出！）；再按 H 退出",
     pen: "✏️ 画笔涂改中：左键圈画，右键或中键点选项直接作答（无需退出！）；再按 P 退出",
     line: "📏 直线中：左键画下划线，右键或中键点选项直接作答；再按 L 退出",
@@ -2451,16 +2664,16 @@ function setDrawTool(tool, notify = false) {
     const isMob = window.matchMedia("(max-width: 720px)").matches;
     const names = isMob ? {
       cursor: "已切回：答题滚动模式",
-      highlighter: "荧光笔已开启（轻点选项圆圈作答 · 最右侧边缘可直接上下滑动）",
-      pen: "画笔已开启（轻点选项圆圈作答 · 最右侧边缘可直接上下滑动）",
-      line: "直线已开启（最右侧边缘可直接上下滑动）",
-      eraser: "橡皮擦已开启（最右侧边缘可直接上下滑动）"
+      highlighter: isRev ? "复盘荧光笔已开启（原批注已锁定 · 最右侧边缘可上下滑动）" : "荧光笔已开启（轻点选项圆圈作答 · 最右侧边缘可直接上下滑动）",
+      pen: isRev ? "复盘画笔已开启（原批注已锁定 · 最右侧边缘可上下滑动）" : "画笔已开启（轻点选项圆圈作答 · 最右侧边缘可直接上下滑动）",
+      line: isRev ? "复盘直线已开启（最右侧边缘可上下滑动）" : "直线已开启（最右侧边缘可直接上下滑动）",
+      eraser: isRev ? "复盘橡皮已开启（仅擦除复盘批注 · 原批注已锁定）" : "橡皮擦已开启（最右侧边缘可直接上下滑动）"
     } : {
       cursor: "已切回：答题点击模式",
-      highlighter: "荧光笔已开启（右键/中键可直接选选项，再按 H 关闭）",
-      pen: "画笔已开启（右键/中键可直接选选项，再按 P 关闭）",
-      line: "直线已开启（右键/中键可直接选选项，再按 L 关闭）",
-      eraser: "橡皮擦已开启（再按 E 关闭）"
+      highlighter: isRev ? "复盘荧光笔已开启（原批注已锁定，再按 H 关闭）" : "荧光笔已开启（右键/中键可直接选选项，再按 H 关闭）",
+      pen: isRev ? "复盘画笔已开启（紫色复盘层，原批注已锁定，再按 P 关闭）" : "画笔已开启（右键/中键可直接选选项，再按 P 关闭）",
+      line: isRev ? "复盘直线已开启（再按 L 关闭）" : "直线已开启（右键/中键可直接选选项，再按 L 关闭）",
+      eraser: isRev ? "复盘橡皮擦已开启（仅擦除复盘批注，原批注已锁定）" : "橡皮擦已开启（再按 E 关闭）"
     };
     showToast(names[tool]);
   }
@@ -2478,9 +2691,15 @@ function renderDrawToolbar() {
     }
   });
 
+  const isRev = getActivePenPaletteMode();
+  $("reviewModePill")?.classList.toggle("hidden", !isRev);
+  const hasAnyRev = hasAnyDeckReviewDrawings();
+  $("btnClearAllReview")?.classList.toggle("hidden", !hasAnyRev);
+  $("btnClearAllReviewSheet")?.classList.toggle("hidden", !hasAnyRev);
+
   const isHL = activeTool === "highlighter";
-  const palette = isHL ? HL_COLORS : PEN_COLORS;
-  const curColor = isHL ? hlColor : penColor;
+  const palette = isHL ? (isRev ? REVIEW_HL_COLORS : HL_COLORS) : (isRev ? REVIEW_PEN_COLORS : PEN_COLORS);
+  const curColor = isHL ? (isRev ? reviewHlColor : hlColor) : (isRev ? reviewPenColor : penColor);
   const swHtml = palette.map(item => `
     <button class="color-swatch ${item.c === curColor ? "active" : ""}"
       style="background:${item.c};" title="${item.name}" data-swatch="${item.c}"></button>
@@ -2666,6 +2885,8 @@ function submitDeck() {
   }
   renderFullFeed();
   renderAnswerSheet();
+  renderDrawToolbar();
+  updateDrawCursor();
   updateTimerDisplay();
   showReportModal(currentDeck, currentDeckTitle);
 }
@@ -3344,10 +3565,31 @@ $("questionFeed").addEventListener("click", (e) => {
     }
     return;
   }
-  // Clear drawings on a specific question or passage
+  // Clear ONLY review annotations on a specific question or passage (keeps original exam marks locked!)
+  const clrRevBtn = e.target.closest("[data-clear-review-draw]");
+  if (clrRevBtn) {
+    const key = clrRevBtn.dataset.clearReviewDraw;
+    const arr = state.drawings[key] || [];
+    const kept = arr.filter(s => !(s && s.review));
+    if (kept.length !== arr.length) {
+      state.drawings[key] = kept;
+      redoStacks.set(key, []);
+      saveState();
+      redrawSingleCanvas(key);
+      updateClearBtnVisibility(key);
+      renderAnswerSheet();
+      showToast("🧹 已清空此处复盘批注（做题原批注已保留）");
+    }
+    return;
+  }
+  // Clear drawings on a specific question or passage (only during solving, blocked in review!)
   const clrBtn = e.target.closest("[data-clear-draw]");
   if (clrBtn) {
     const key = clrBtn.dataset.clearDraw;
+    if (isDrawKeyInReview(key)) {
+      showToast("🔒 复盘模式下不可清除做题时的原批注");
+      return;
+    }
     state.drawings[key] = [];
     redoStacks.set(key, []);
     saveState();
@@ -3733,8 +3975,12 @@ $("mobileBottomBar")?.addEventListener("click", (e) => {
   if (toolBtn) { toggleOrSetDrawTool(toolBtn.dataset.tool); return; }
   const sw = e.target.closest("[data-swatch]");
   if (sw) {
-    if (activeTool === "highlighter") hlColor = sw.dataset.swatch;
-    else penColor = sw.dataset.swatch;
+    const isRev = getActivePenPaletteMode();
+    if (activeTool === "highlighter") {
+      if (isRev) reviewHlColor = sw.dataset.swatch; else hlColor = sw.dataset.swatch;
+    } else {
+      if (isRev) reviewPenColor = sw.dataset.swatch; else penColor = sw.dataset.swatch;
+    }
     updateDrawCursor(); applyToolbarVisibility(); renderDrawToolbar();
     return;
   }
@@ -3779,9 +4025,11 @@ $("drawToolbar").addEventListener("click", (e) => {
   }
   const sw = e.target.closest("[data-swatch]");
   if (sw) {
-    if (activeTool === "highlighter") hlColor = sw.dataset.swatch;
-    else {
-      penColor = sw.dataset.swatch;
+    const isRev = getActivePenPaletteMode();
+    if (activeTool === "highlighter") {
+      if (isRev) reviewHlColor = sw.dataset.swatch; else hlColor = sw.dataset.swatch;
+    } else {
+      if (isRev) reviewPenColor = sw.dataset.swatch; else penColor = sw.dataset.swatch;
       if (activeTool === "cursor" || activeTool === "eraser") setDrawTool("pen", false);
     }
     updateDrawCursor();
@@ -3805,13 +4053,28 @@ function toggleToolbarHidden() {
 $("btnHideToolbar").addEventListener("click", toggleToolbarHidden);
 $("btnToggleToolbarTop").addEventListener("click", toggleToolbarHidden);
 $("btnExitDraw").addEventListener("click", () => setDrawTool("cursor", true));
+$("btnClearAllReview")?.addEventListener("click", clearAllDeckReviewDrawings);
+$("btnClearAllReviewSheet")?.addEventListener("click", () => { clearAllDeckReviewDrawings(); closeMobileSheet(); });
 $("btnUndo").addEventListener("click", () => {
   const key = getTargetDrawKeyForUndo();
   if (!key) return;
   const arr = state.drawings[key] || [];
   if (!arr.length) return;
+  const locked = isDrawKeyInReview(key);
+  let targetIdx = arr.length - 1;
+  if (locked) {
+    targetIdx = -1;
+    for (let i = arr.length - 1; i >= 0; i--) {
+      if (arr[i] && arr[i].review) { targetIdx = i; break; }
+    }
+    if (targetIdx < 0) {
+      showToast("🔒 做题时的原批注已锁定，当前无复盘批注可撤销");
+      return;
+    }
+  }
+  const [popped] = arr.splice(targetIdx, 1);
   if (!redoStacks.has(key)) redoStacks.set(key, []);
-  redoStacks.get(key).push(arr.pop());
+  redoStacks.get(key).push(popped);
   saveState(); redrawSingleCanvas(key); updateClearBtnVisibility(key); renderAnswerSheet();
 });
 $("btnRedo").addEventListener("click", () => {
