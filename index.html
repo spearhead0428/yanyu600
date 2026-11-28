@@ -327,8 +327,10 @@ body.in-quiz .brand-sub { display: none; }
 
 /* Sticky Annotation Toolbar */
 .toolbar-sticky {
-  position: sticky; top: 64px; z-index: 45;
-  margin-bottom: 14px;
+  position: sticky; top: 58px; z-index: 45;
+  padding: 6px 0 6px;
+  background: var(--bg);
+  margin-bottom: 8px;
 }
 .draw-toolbar {
   background: var(--surface); border: 1px solid var(--border);
@@ -390,7 +392,10 @@ body.in-quiz .brand-sub { display: none; }
   display: flex; flex-direction: column; gap: 18px;
 }
 
-/* Shared Passage Card (Chapter 15) */
+/* Shared Passage Group & Sticky Material Card (一拖五 / 一拖二 / 篇章阅读) */
+.passage-group {
+  display: flex; flex-direction: column; gap: 18px;
+}
 .passage-stage {
   position: relative;
   background: var(--surface);
@@ -399,39 +404,78 @@ body.in-quiz .brand-sub { display: none; }
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
-  scroll-margin-top: 135px;
+  scroll-margin-top: var(--q-scroll-margin, 135px);
 }
-.passage-inner {
-  padding: 20px 26px 22px;
-  position: relative; z-index: 1;
+.passage-stage.sticky-passage {
+  position: sticky;
+  top: var(--passage-sticky-top, 122px);
+  z-index: 30;
+  border-bottom: 2px solid var(--primary-border);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.11);
+}
+.passage-stage.sticky-passage.unpinned {
+  position: relative;
+  top: auto;
+  z-index: 2;
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 .passage-head {
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
-  padding-bottom: 12px; margin-bottom: 14px;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 11px 20px 10px;
+  background: var(--surface);
   border-bottom: 1px dashed var(--border);
+  position: relative; z-index: 2;
+}
+.passage-stage.is-collapsed .passage-head {
+  border-bottom: none;
+}
+.passage-actions {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.passage-pin-btn.active {
+  background: var(--primary-soft); color: var(--primary); border-color: var(--primary-border);
 }
 .passage-title {
-  font-size: 15px; font-weight: 800; color: var(--primary);
-  display: flex; align-items: center; gap: 8px;
+  font-size: 14.5px; font-weight: 800; color: var(--primary);
+  display: flex; align-items: center; gap: 7px;
+}
+.passage-scroll-box {
+  max-height: 36vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.passage-stage.unpinned .passage-scroll-box {
+  max-height: none;
+  overflow-y: visible;
+}
+.passage-scroll-box.collapsed {
+  display: none;
+}
+.passage-canvas-wrap {
+  position: relative;
+  padding: 14px 24px 16px;
 }
 .passage-body {
+  position: relative; z-index: 1;
   font-size: calc(var(--q-font-size) - 0.5px);
-  line-height: 1.9;
+  line-height: 1.85;
   color: var(--text);
 }
-.passage-body p { margin: 0 0 9px; text-indent: 2em; }
-.passage-body.collapsed {
-  max-height: 150px; overflow: hidden;
-  mask-image: linear-gradient(180deg, #000 62%, transparent);
-  -webkit-mask-image: linear-gradient(180deg, #000 62%, transparent);
-}
+.passage-body p { margin: 0 0 8px; text-indent: 2em; }
+.passage-body p:last-child { margin-bottom: 0; }
 
 /* Single Question Card Wrapper */
 .q-wrapper {
-  scroll-margin-top: 135px;
+  scroll-margin-top: var(--q-scroll-margin, 135px);
+}
+.passage-group .q-wrapper {
+  scroll-margin-top: var(--group-q-scroll-margin, 380px);
 }
 .question-stage {
   position: relative;
+  z-index: 1;
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
@@ -933,9 +977,17 @@ html[data-theme="dark"] .tool-btn.review-clear {
   .mobile-sheet-settings { display: flex; }
   .sheet-sidebar { top: 52px; width: 86vw; max-width: 330px; }
 
-  .question-feed { gap: 12px; }
-  .q-wrapper, .passage-stage { scroll-margin-top: 62px; }
-  .question-card-inner, .passage-inner { padding: 15px 14px 17px; }
+  .question-feed, .passage-group { gap: 12px; }
+  .q-wrapper, .passage-stage { scroll-margin-top: var(--q-scroll-margin, 62px); }
+  .passage-group .q-wrapper { scroll-margin-top: var(--group-q-scroll-margin, 280px); }
+  .passage-head { padding: 6px 10px; gap: 4px 6px; }
+  .passage-head .btn-sm { height: 25px; padding: 0 7px; font-size: 11.5px; }
+  .passage-title { font-size: 12.5px; line-height: 1.35; }
+  .passage-scroll-box { max-height: 31vh; }
+  .passage-canvas-wrap { padding: 8px 11px 10px; }
+  .passage-body { line-height: 1.66; }
+  .passage-body p { margin: 0 0 4px; }
+  .question-card-inner { padding: 15px 14px 17px; }
   .q-header { padding-bottom: 10px; margin-bottom: 12px; gap: 6px; }
   .q-num-badge { font-size: 13px; padding: 2px 8px; }
   .q-stem { line-height: 1.82; }
@@ -1942,54 +1994,71 @@ function renderFullFeed() {
     if (bestIdx !== null && bestIdx !== activeIdx) {
       setActiveIdx(bestIdx, false);
     }
-  }, { rootMargin: "-15% 0px -55% 0px", threshold: 0.01 });
+  }, { rootMargin: "-15% 0px -35% 0px", threshold: 0.01 });
 
   let lastPassageId = null;
+  let currentPassageGroup = null;
 
   currentDeck.forEach((q, idx) => {
-    // Render shared passage card ONCE before its group of sub-questions
-    if (q.passage && q.passageId !== lastPassageId) {
-      lastPassageId = q.passageId;
-      const groupQs = currentDeck.filter(item => item.passageId === q.passageId);
-      const firstNo = currentDeck.indexOf(groupQs[0]) + 1;
-      const lastNo = currentDeck.indexOf(groupQs[groupQs.length - 1]) + 1;
-      const pStage = document.createElement("div");
-      pStage.className = "passage-stage";
-      pStage.dataset.drawKey = q.passageId;
-      const pKindLabel = q.bankId === "yanyu600" ? "📖 篇章阅读材料" : ((q.bankId === "panduan600" || q.bankId === "zhenti304") ? `🧩 综合推理材料（${groupQs.length === 2 ? "一拖二" : groupQs.length === 5 ? "一拖五" : `一拖${groupQs.length}`}）` : "📄 共用材料");
-      const pImgsHtml = (q.passageImages && q.passageImages.length)
-        ? `<div class="q-fig-wrap">${q.passageImages.map((src, i) => `<img class="q-fig-img" src="${escapeHtml(src)}" alt="材料图示${i + 1}" loading="lazy" />`).join("")}</div>`
-        : "";
-      const pReview = isReviewingMode();
-      const pStrokes = state.drawings[q.passageId] || [];
-      const pHasDraw = pStrokes.length > 0;
-      const pHasReviewDraw = pStrokes.some(s => s && s.review);
-      const pClearBtnHtml = pReview
-        ? `<button class="btn btn-sm review-clear ${pHasReviewDraw ? "" : "hidden"}" id="btn-clear-rev-${escapeHtml(q.passageId)}" data-clear-review-draw="${escapeHtml(q.passageId)}" title="清空本材料复盘批注（保留做题原批注）">🧹 清复盘批注</button>`
-        : `<button class="btn btn-sm ${pHasDraw ? "" : "hidden"}" id="btn-clear-q-${escapeHtml(q.passageId)}" data-clear-draw="${escapeHtml(q.passageId)}">🗑 清空材料涂改</button>`;
-      pStage.innerHTML = `
-        <canvas class="draw-canvas-hl"></canvas>
-        <canvas class="draw-canvas-pen"></canvas>
-        <div class="card-scroll-strip" aria-hidden="true"></div>
-        <div class="passage-inner">
+    // Wrap shared passage + its contiguous sub-questions inside .passage-group so the stem stays sticky while scrolling
+    if (q.passage) {
+      if (q.passageId !== lastPassageId) {
+        lastPassageId = q.passageId;
+        currentPassageGroup = document.createElement("div");
+        currentPassageGroup.className = "passage-group";
+        currentPassageGroup.dataset.passageGroup = q.passageId;
+
+        const groupQs = currentDeck.filter(item => item.passageId === q.passageId);
+        const firstNo = currentDeck.indexOf(groupQs[0]) + 1;
+        const lastNo = currentDeck.indexOf(groupQs[groupQs.length - 1]) + 1;
+        const pStage = document.createElement("div");
+        pStage.className = "passage-stage sticky-passage";
+        pStage.id = `pstage-${q.passageId}`;
+        const pKindLabel = q.bankId === "yanyu600" ? "📖 篇章阅读材料" : ((q.bankId === "panduan600" || q.bankId === "zhenti304") ? `🧩 综合推理材料（${groupQs.length === 2 ? "一拖二" : groupQs.length === 5 ? "一拖五" : `一拖${groupQs.length}`}）` : "📄 共用材料");
+        const pImgsHtml = (q.passageImages && q.passageImages.length)
+          ? `<div class="q-fig-wrap">${q.passageImages.map((src, i) => `<img class="q-fig-img" src="${escapeHtml(src)}" alt="材料图示${i + 1}" loading="lazy" />`).join("")}</div>`
+          : "";
+        const pReview = isReviewingMode();
+        const pStrokes = state.drawings[q.passageId] || [];
+        const pHasDraw = pStrokes.length > 0;
+        const pHasReviewDraw = pStrokes.some(s => s && s.review);
+        const pClearBtnHtml = pReview
+          ? `<button class="btn btn-sm review-clear ${pHasReviewDraw ? "" : "hidden"}" id="btn-clear-rev-${escapeHtml(q.passageId)}" data-clear-review-draw="${escapeHtml(q.passageId)}" title="清空本材料复盘批注（保留做题原批注）">🧹 清复盘批注</button>`
+          : `<button class="btn btn-sm ${pHasDraw ? "" : "hidden"}" id="btn-clear-q-${escapeHtml(q.passageId)}" data-clear-draw="${escapeHtml(q.passageId)}">🗑 清空材料涂改</button>`;
+        pStage.innerHTML = `
           <div class="passage-head">
             <div class="passage-title">${pKindLabel}（第 ${firstNo}–${lastNo} 题共用${q.source ? " · " + escapeHtml(q.source) : ""}）</div>
-            <div style="display:flex;gap:6px;">
+            <div class="passage-actions">
               ${pClearBtnHtml}
+              <button class="btn btn-sm passage-pin-btn active" data-pin-passage="${escapeHtml(q.passageId)}" title="开启/取消下滑置顶固定">📌 已固定</button>
               <button class="btn btn-sm" data-toggle-passage="${escapeHtml(q.passageId)}">收起材料</button>
             </div>
           </div>
-          <div class="passage-body" id="pbody-${escapeHtml(q.passageId)}">${renderPassageHtml(q.passage)}${pImgsHtml}</div>
-        </div>
-      `;
-      feed.appendChild(pStage);
-      bindCanvasStage(pStage, q.passageId, null);
-      pStage.querySelectorAll("img").forEach(img => {
-        img.addEventListener("load", () => {
-          resizeSingleCanvas(q.passageId);
-          redrawSingleCanvas(q.passageId);
+          <div class="passage-scroll-box" id="pscroll-${escapeHtml(q.passageId)}">
+            <div class="passage-canvas-wrap" data-draw-key="${escapeHtml(q.passageId)}">
+              <canvas class="draw-canvas-hl"></canvas>
+              <canvas class="draw-canvas-pen"></canvas>
+              <div class="card-scroll-strip" aria-hidden="true"></div>
+              <div class="passage-body" id="pbody-${escapeHtml(q.passageId)}">${renderPassageHtml(q.passage)}${pImgsHtml}</div>
+            </div>
+          </div>
+        `;
+        currentPassageGroup.appendChild(pStage);
+        feed.appendChild(currentPassageGroup);
+
+        const canvasWrap = pStage.querySelector(".passage-canvas-wrap");
+        bindCanvasStage(canvasWrap, q.passageId, null);
+        pStage.querySelectorAll("img").forEach(img => {
+          img.addEventListener("load", () => {
+            resizeSingleCanvas(q.passageId);
+            redrawSingleCanvas(q.passageId);
+            updateStickyPassageOffsets();
+          });
         });
-      });
+      }
+    } else {
+      lastPassageId = null;
+      currentPassageGroup = null;
     }
 
     const wrap = document.createElement("div");
@@ -1998,7 +2067,7 @@ function renderFullFeed() {
     wrap.dataset.qIdx = idx;
     wrap.dataset.qId = q.id;
     wrap.innerHTML = buildQuestionCardHtml(q, idx);
-    feed.appendChild(wrap);
+    (currentPassageGroup || feed).appendChild(wrap);
 
     const stage = wrap.querySelector(".question-stage");
     bindCanvasStage(stage, String(q.id), q.id);
@@ -2011,12 +2080,13 @@ function renderFullFeed() {
     visibleCardObserver.observe(wrap);
   });
 
-  // Initial canvas sizing & drawing for all cards
+  // Initial canvas sizing, drawing & sticky passage offset sync
   requestAnimationFrame(() => {
     for (const key of canvasControllers.keys()) {
       resizeSingleCanvas(key);
       redrawSingleCanvas(key);
     }
+    updateStickyPassageOffsets();
   });
 }
 
@@ -2163,7 +2233,9 @@ function setActiveIdx(idx, scrollIntoView = false) {
   if (wrap) {
     wrap.classList.add("active-card");
     if (scrollIntoView) {
-      wrap.scrollIntoView({ behavior: "smooth", block: "start" });
+      updateStickyPassageOffsets();
+      const dist = Math.abs(wrap.getBoundingClientRect().top);
+      wrap.scrollIntoView({ behavior: dist > 2600 ? "auto" : "smooth", block: "start" });
     }
   }
   updateSheetActive();
@@ -2262,8 +2334,8 @@ function bindCanvasStage(stageEl, drawKey, qId) {
         selectOptionForQuestion(optEl.dataset.optQ, Number(optEl.dataset.optIdx), optEl.dataset.letter);
         return;
       }
-      // Also allow right/middle click on star/mark/note/clear-review/collapse buttons underneath
-      const actionBtn = stack.find(el => el.matches && el.matches("[data-star-q], [data-mark-q], [data-note-toggle], [data-toggle-passage], [data-clear-review-draw]"));
+      // Also allow right/middle click on star/mark/note/clear-review/collapse/pin buttons underneath
+      const actionBtn = stack.find(el => el.matches && el.matches("[data-star-q], [data-mark-q], [data-note-toggle], [data-toggle-passage], [data-pin-passage], [data-clear-review-draw]"));
       if (actionBtn) actionBtn.click();
       return;
     }
@@ -2611,6 +2683,31 @@ function updateDrawCursor() {
   }
 }
 
+function updateStickyPassageOffsets() {
+  const topbar = document.querySelector(".topbar");
+  const topH = topbar ? Math.round(topbar.getBoundingClientRect().height) : 58;
+  const tb = $("toolbarSticky");
+  let tbH = 0;
+  if (tb && !tb.classList.contains("collapsed-bar")) {
+    const cs = getComputedStyle(tb);
+    if (cs.display !== "none") {
+      tbH = Math.round(tb.getBoundingClientRect().height);
+    }
+  }
+  // Desktop sticky toolbar sits flush at top: topH with built-in vertical padding
+  const stickyTop = tbH > 0 ? (topH + tbH) : (topH + 4);
+  document.documentElement.style.setProperty("--passage-sticky-top", stickyTop + "px");
+  document.documentElement.style.setProperty("--q-scroll-margin", (stickyTop + 8) + "px");
+  document.querySelectorAll(".passage-group").forEach(grp => {
+    const ps = grp.querySelector(".passage-stage");
+    if (!ps) return;
+    const isPinned = !ps.classList.contains("unpinned");
+    const psH = Math.round(ps.getBoundingClientRect().height);
+    const margin = isPinned ? (stickyTop + psH + 12) : (stickyTop + 8);
+    grp.style.setProperty("--group-q-scroll-margin", margin + "px");
+  });
+}
+
 function applyToolbarVisibility() {
   const hidden = Boolean(state.toolbarHidden);
   $("toolbarSticky").classList.toggle("collapsed-bar", hidden);
@@ -2625,6 +2722,7 @@ function applyToolbarVisibility() {
     const labelMap = { cursor: "工具栏", highlighter: "荧光笔", pen: "画笔", line: "直线", eraser: "橡皮" };
     btn.innerHTML = `<span class="tool-pill-dot" id="topToolDot" style="background:${toolColor || "var(--text-3)"}"></span> ${hidden ? (activeTool === "cursor" ? "展开工具栏" : labelMap[activeTool] + "·展开") : "隐藏工具栏"}`;
   }
+  requestAnimationFrame(updateStickyPassageOffsets);
 }
 
 // Same-key toggle: pressing/clicking the currently active draw tool turns it OFF back to cursor!
@@ -3599,15 +3697,38 @@ $("questionFeed").addEventListener("click", (e) => {
     showToast("已清空该处涂改");
     return;
   }
+  // Pin/unpin sticky shared passage
+  const pPin = e.target.closest("[data-pin-passage]");
+  if (pPin) {
+    const pid = pPin.dataset.pinPassage;
+    const st = $(`pstage-${pid}`);
+    if (st) {
+      const unpinned = st.classList.toggle("unpinned");
+      pPin.classList.toggle("active", !unpinned);
+      pPin.textContent = unpinned ? "📌 固定材料" : "📌 已固定";
+      requestAnimationFrame(() => {
+        updateStickyPassageOffsets();
+        resizeSingleCanvas(pid);
+        redrawSingleCanvas(pid);
+      });
+    }
+    return;
+  }
   // Collapse/expand shared passage
   const pTog = e.target.closest("[data-toggle-passage]");
   if (pTog) {
     const pid = pTog.dataset.togglePassage;
-    const body = $(`pbody-${pid}`);
-    if (body) {
-      const collapsed = body.classList.toggle("collapsed");
-      pTog.textContent = collapsed ? "展开全文" : "收起材料";
-      requestAnimationFrame(() => { resizeSingleCanvas(pid); redrawSingleCanvas(pid); });
+    const scrollBox = $(`pscroll-${pid}`);
+    const st = $(`pstage-${pid}`);
+    if (scrollBox) {
+      const collapsed = scrollBox.classList.toggle("collapsed");
+      if (st) st.classList.toggle("is-collapsed", collapsed);
+      pTog.textContent = collapsed ? "展开材料" : "收起材料";
+      requestAnimationFrame(() => {
+        updateStickyPassageOffsets();
+        resizeSingleCanvas(pid);
+        redrawSingleCanvas(pid);
+      });
     }
     return;
   }
@@ -3650,10 +3771,15 @@ $("btnTheme").addEventListener("click", () => {
 $("btnFontInc").addEventListener("click", () => {
   state.fontSize = Math.min(24, state.fontSize + 1);
   saveState(); applyThemeAndFont();
+  requestAnimationFrame(updateStickyPassageOffsets);
 });
 $("btnFontDec").addEventListener("click", () => {
   state.fontSize = Math.max(14, state.fontSize - 1);
   saveState(); applyThemeAndFont();
+  requestAnimationFrame(updateStickyPassageOffsets);
+});
+window.addEventListener("resize", () => {
+  if (isQuizView) updateStickyPassageOffsets();
 });
 
 // ================= CUSTOM BANK IMPORT & MANAGER =================
